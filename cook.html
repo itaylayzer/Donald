@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        button,
+        input {
+            border: none;
+            outline: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cookie Manager</h1>
+    <table id="cookie-table">
+        <tr>
+            <th>Cookie Name</th>
+            <th>Cookie Value</th>
+            <th>Actions</th>
+        </tr>
+    </table>
+    <br>
+    <input type="text" id="cookie-name" placeholder="Enter cookie name">
+    <input type="text" id="cookie-value" placeholder="Enter cookie value">
+    <button id="add-cookie-button">Add Cookie</button>
+    <br><br>
+    <button id="delete-all-cookies-button">Delete All Cookies</button>
+    <script>
+        const addCookieButton = document.getElementById("add-cookie-button");
+        const deleteAllCookiesButton = document.getElementById("delete-all-cookies-button");
+        const cookieNameInput = document.getElementById("cookie-name");
+        const cookieValueInput = document.getElementById("cookie-value");
+        const cookieTable = document.getElementById("cookie-table");
+
+        function addCookie() {
+            const cookieName = cookieNameInput.value;
+            const cookieValue = cookieValueInput.value;
+            document.cookie += `${cookieName}=${cookieValue};`;
+            updateTable();
+        }
+
+        function deleteAllCookies() {
+            const cookies = document.cookie.split(";");
+
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i];
+                const eqPos = cookie.indexOf("=");
+                const cookieName = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                document.cookie = cookieName + "=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;";
+            }
+
+            updateTable();
+        }
+
+        function updateTable() {
+            const cookies = document.cookie.split("; ");
+            cookieTable.innerHTML = `
+                <tr>
+                    <th>Cookie Name</th>
+                    <th>Cookie Value</th>
+                    <th>Actions</th>
+                </tr>
+            `;
+
+            cookies.forEach(function (cookie) {
+                const cookieParts = cookie.split("=");
+                const cookieName = cookieParts[0];
+                const cookieValue = cookieParts[1];
+                cookieTable.innerHTML += `
+                    <tr>
+                        <td>${cookieName}</td>
+                        <td>${cookieValue}</td>
+                        <td></td>
+                    </tr>
+                `;
+            });
+        }
+
+        addCookieButton.addEventListener("click", addCookie);
+        deleteAllCookiesButton.addEventListener("click", deleteAllCookies);
+        updateTable();
+    </script>
+</body>
+</html>

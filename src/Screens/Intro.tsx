@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-// import { GLTFLoader, GLTF } from "three/addons/loaders/GLTFLoader.js";
 
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 type CustomLight = {
     color: THREE.ColorRepresentation;
@@ -106,8 +104,11 @@ function App() {
             sleepingAnim.play();
             sleepingAnim.weight = 1;
             console.log("started playing");
+            // @ts-ignore
             globalThis.fbx = fbx;
+            // @ts-ignore
             globalThis.sleepingAnim = sleepingAnim;
+            // @ts-ignore
             globalThis.mixer = mixer;
             
 
@@ -162,6 +163,7 @@ function App() {
             const animate = () => {
                 requestAnimationFrame(animate);
                 renderer.render(scene, camera);
+                 // @ts-ignore
                 globalThis.mixer.update(0.01);
                 camera.position.lerp(cameraPosition, 0.05);
             };
@@ -179,11 +181,12 @@ function App() {
 
             // gameLogic form here on
             document.body.style.cursor = "pointer";
-            document.body.onclick = (e) => {
+            document.body.onclick = () => {
                 document.body.onclick = () => {};
                 document.body.style.cursor = "";
 
                 // Wake Donald up!
+                 // @ts-ignore
                 globalThis.camera = camera;
                 cameraPosition.multiplyScalar(0.7);
                 cameraPosition.add(new THREE.Vector3(-2, 0, 0));

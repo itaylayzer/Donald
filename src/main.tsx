@@ -2,7 +2,7 @@ import ReactDOM from 'react-dom/client'
 import Intro from './Screens/Intro.tsx'
 import Kart from "./Screens/Kart/main.tsx"
 import './index.css'
-import { BrowserRouter as Router, Route, Routes, RouterProvider, createBrowserRouter } from "react-router-dom";
+import { RouterProvider, createBrowserRouter } from "react-router-dom";
 
 const router = createBrowserRouter([
     {
@@ -18,7 +18,6 @@ const router = createBrowserRouter([
 function App() {
     return <RouterProvider router={router} />;
 }
-
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <App />

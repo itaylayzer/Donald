@@ -106,7 +106,7 @@ div.gameUI div.Menu button:active {
 
 div.gameUI div.Menu button:disabled:hover {
   translate: 0px;
-  background-color: rgb(255, 255, 255, 80%);
+  background-color: rgb(20,20,20, 80%);
   cursor: default;
   scale: 0.93;
 }

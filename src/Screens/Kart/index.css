@@ -43,7 +43,7 @@ div.menu main button{
 div.menu main button:hover{
   scale:0.96;
 }
-div.gameUI
+div.gameUI#kart
 {
   position: absolute;
   top: 0;
@@ -56,14 +56,14 @@ div.gameUI
   color:white;
   font-size: 40px;
 }
-div.gameUI img.map{
+div.gameUI#kart img.map{
   position: absolute;
   right: 40px;
   bottom: 120px;
   width: 200px;
   opacity: 0.15;
 }
-div.gameUI h4{
+div.gameUI#kart h4{
   position: absolute;
   right: 120px;
   bottom: 60px;
@@ -73,7 +73,7 @@ div.gameUI h4{
   font-family:"KoopaParty8" ;
   filter:drop-shadow(2px 2px 0px red);
 }
-div.gameUI h4 span{
+div.gameUI#kart h4 span{
   font-size: 100px;
   transform:rotate(30deg);
 }
@@ -81,45 +81,65 @@ div.gameUI h4 span{
   font-family: "KoopaParty8";
   src: url("fonts/KoopaParty8-Regular.ttf");
 }
-div.gameUI div.left-bottom{
+div.gameUI#kart{
+  -webkit-text-fill-color: white;
+  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: black;
+  font-family: consolas;
+}
+div.gameUI#kart div.left-bottom{
   position: absolute;
   left: 120px;
   bottom: 60px;
-  display: flex;
   gap:10px;
+  font-size: 100px;
+  border-radius: 100000px;
+  aspect-ratio: 1;
+  width: 100px;
+  height:100px;
+  border:10px solid black;
 }
-div.gameUI div.left-bottom div.item{
-  background-color: rgba(0,0,0,30%);
-  border-radius: 10px;
-  font-size: 30px;
-  padding:5px 30px;
-  transform:skewX(-10deg);
-}
-div.gameUI div.left-bottom div.item p{
-  display: inline-block;
+div.gameUI#kart div.left-bottom p{
   margin:0;
-  transform:skewX(10deg);
-}
-div.gameUI div.left-bottom div.item p:nth-child(1){
-  font-size: 40px;
-  
+  translate:-5px -5px;
+  aspect-ratio: 1;
+  width: 100px;
+  height:100px;
+  border-radius: 100000px;
+  border:5px solid black;
+  scale:0.7;
 }
 
-div.gameUI div.left-bottom div.item p:nth-child(2){
-  margin-left:10px;
-  font-size: 30px;
+div.gameUI#kart div.right-bottom{
+  position: absolute;
+  right: 120px;
+  bottom: 60px;
+  gap:10px;
+  font-size:60px;
 }
+
+div.gameUI#kart div.right-top{
+  position: absolute;
+  right: 120px;
+  top: 60px;
+  gap:10px;
+  aspect-ratio: 1;
+}
+
 
 body {
   margin: 0;
 }
 
+div.consoles{
+  width: fit-content;
+}
 div.consoles p{
   color:white;
-  filter:drop-shadow(0px 0px 2px black);
   font-size: 30px;
-  background-color: rgb(20,20,20,20%);
-  width: fit-content;
+  background-color: rgb(20,20,20,50%);
+  width: 100%;
+  text-align: left;
   margin:0;
   padding-block:2.5px;
 }
