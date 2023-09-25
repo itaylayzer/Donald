@@ -72,7 +72,6 @@ export class ItemCube {
         interval = setInterval(() => {
             tween2.update(t);
             tween1.update(t);
-            console.log("aa");
             t += 16;
         }, 16);
     }
@@ -98,7 +97,6 @@ export class ItemCube {
         let t = 0;
         interval = setInterval(() => {
             tween.update(t);
-            console.log("aa");
             t += 16;
         }, 16);
     }

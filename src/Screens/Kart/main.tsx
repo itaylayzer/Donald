@@ -3,34 +3,31 @@ import { useEffect, useState } from "react";
 
 // THREE
 import * as THREE from "three";
-import { GLTFLoader, GLTF } from "three/addons/loaders/GLTFLoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 
 import "./index.css";
 import { Socket, io } from "./assets/socket.io.ts";
 import main from "./assets/server.ts";
-import { loadedMesh } from "./assets/types.ts";
+import { loadedAssets } from "./assets/types.ts";
 import Game from "./scripts/game";
-
-
 
 export default function Main() {
     const [socket, SetSocket] = useState<Socket | undefined | null>(undefined);
     const [pvalue, SetProgress] = useState<number>(0);
-    const [loadedMesh, SetLoadedMesh] = useState<loadedMesh | undefined>(undefined);
+    const [loadedMesh, SetLoadedMesh] = useState<loadedAssets | undefined>(undefined);
     useEffect(() => {
-        function loadMeshes(items: { [key: string]: string }): Promise<loadedMesh> {
+        function loadMeshes(items: { [key: string]: string }): Promise<loadedAssets> {
             return new Promise((resolve, reject) => {
                 const loadingManager = new THREE.LoadingManager();
                 const gltfLoader = new GLTFLoader(loadingManager);
                 const fbxLodaer = new FBXLoader(loadingManager);
-                const l: {
-                    gltf: { [key: string]: GLTF };
-                    fbx: { [key: string]: THREE.Group };
-                } = {
+                const textureLoader = new THREE.TextureLoader(loadingManager);
+                const l = {
                     gltf: {},
                     fbx: {},
-                };
+                    textures:{}
+                } as loadedAssets;
                 const s = Object.keys(items).length;
                 let i = 0;
                 let minerI = 0;
@@ -72,12 +69,32 @@ export default function Main() {
                             }
                         );
                     }
+                    else if (x[1].endsWith(".png")){
+                        textureLoader.load(
+                            x[1],
+                            (mesh1) => {
+                                l.textures[x[0]] = mesh1;
+
+                                i += 1 / s;
+                                minerI = 0;
+                                SetProgress(i);
+                            },
+                            (progres) => {
+                                minerI = progres.loaded / progres.total;
+                                SetProgress(i + minerI / s);
+                            }, // onProgress callback (useful for progress tracking)
+                            (error) => {
+                                reject(error); // Reject the promise if there's an error
+                            }
+                        );
+                    }
                 }
 
                 loadingManager.onLoad = () => {
-                    console.log(`Loaded FBX`, Array.from(Object.keys(l.fbx)));
-                    console.log(`Loaded GLTF`, Array.from(Object.keys(l.gltf)));
-
+                    console.log(`Loaded FBX`, JSON.stringify(Array.from(Object.keys(l.fbx))));
+                    console.log(`Loaded GLTF`,JSON.stringify(Array.from(Object.keys(l.gltf))));
+                    console.log(`Loaded Textures`, JSON.stringify(Array.from(Object.keys(l.textures))));
+                    SetProgress(1);
                     resolve(l);
                 };
             });
@@ -88,10 +105,19 @@ export default function Main() {
             car: "fbx/motor.fbx",
             guess: "gltf/box/guess.gltf",
             sitting: "fbx/animations/sitting.fbx",
-            xmap: "fbx/maps/xmap.fbx",
+            xmap: "fbx/maps/xmap4.fbx",
+            ground:"textures/bricks500x500x2.png"
         })
             .then((v) => {
                 SetLoadedMesh(v);
+
+                if (document.location.search.length > 0 && document.location.search.includes("null")) {
+                    main(async (host) => {
+                        const socket = await io(host);
+                        SetSocket(socket);
+                        navigator.clipboard.writeText(host);
+                    });
+                }
             })
             .catch((r) => {
                 console.error(r);
@@ -140,9 +166,9 @@ export default function Main() {
     );
 }
 
-function App({ socket, meshes }: { socket: Socket | null; meshes: loadedMesh }) {
+function App({ socket, meshes }: { socket: Socket | null; meshes: loadedAssets }) {
     const [consoles, SetConsoles] = useState<Array<string>>([]);
-    const [] = useState<number>();
+    const [fps, SetFPS] = useState<number>(0);
     function _console(...what: (string | any)[]) {
         let newa: string = "";
         for (const x of what) {
@@ -163,7 +189,8 @@ function App({ socket, meshes }: { socket: Socket | null; meshes: loadedMesh }) 
                 Game({
                     socket: socket,
                     log: _console,
-                    meshes: meshes,
+                    assets: meshes,
+                    setFPS: SetFPS,
                 });
             } else {
                 requestAnimationFrame(waitForCanvas);
@@ -187,7 +214,7 @@ function App({ socket, meshes }: { socket: Socket | null; meshes: loadedMesh }) 
                 <div className="left-bottom">
                     <p> 3</p>
                 </div>
-                <div className="right-top">1234</div>
+                <div className="right-top">{fps.toFixed(0)} FPS</div>
                 <div className="consoles">
                     {consoles.map((v) => (
                         <p>{v}</p>

@@ -1,5 +1,4 @@
 import { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { ItemCube } from "../scripts/itemCube";
 export interface ItemBox {
     available:boolean,
     pos:[number,number, number]
@@ -16,7 +15,8 @@ export type CustomLight = {
     type:"point"|"directional"|"ambient"
 }
 
-export type loadedMesh = {
+export type loadedAssets = {
     gltf: { [key: string]: GLTF };
     fbx: { [key: string]: THREE.Group };
+    textures: {[key:string]:THREE.Texture}
 }

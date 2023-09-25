@@ -176,7 +176,6 @@ function App() {
                 renderer.setSize(window.innerWidth, window.innerHeight);
             }
 
-            //#endregion
             animate();
 
             // gameLogic form here on

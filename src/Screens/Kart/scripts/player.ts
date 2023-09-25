@@ -35,7 +35,7 @@ export class Player {
             collisionFilterGroup: ifLocal ? filters.localCarBody : filters.carBody,
             // isTrigger:true,
             collisionFilterMask: filters.ground | filters.itemBox,
-            mass: 1,
+            mass: ifLocal ? 1 : 0,
             shape: new CANNON.Box(new CANNON.Vec3(0.4, 1, 1)),
         });
 
