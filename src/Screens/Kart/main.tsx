@@ -9,13 +9,16 @@ import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import "./index.css";
 import { Socket, io } from "./assets/socket.io.ts";
 import main from "./assets/server.ts";
-import { loadedAssets } from "./assets/types.ts";
+import { Item, loadedAssets } from "./assets/types.ts";
 import Game from "./scripts/game";
-
+import { SettingsProvider, useSettings } from "./assets/contexts";
+import SettingComp from "./component/settings.tsx";
 export default function Main() {
     const [socket, SetSocket] = useState<Socket | undefined | null>(undefined);
     const [pvalue, SetProgress] = useState<number>(0);
     const [loadedMesh, SetLoadedMesh] = useState<loadedAssets | undefined>(undefined);
+
+    const [tab, SetTab] = useState<number>(0);
     useEffect(() => {
         function loadMeshes(items: { [key: string]: string }): Promise<loadedAssets> {
             return new Promise((resolve, reject) => {
@@ -26,7 +29,7 @@ export default function Main() {
                 const l = {
                     gltf: {},
                     fbx: {},
-                    textures:{}
+                    textures: {},
                 } as loadedAssets;
                 const s = Object.keys(items).length;
                 let i = 0;
@@ -68,8 +71,7 @@ export default function Main() {
                                 reject(error); // Reject the promise if there's an error
                             }
                         );
-                    }
-                    else if (x[1].endsWith(".png")){
+                    } else if (x[1].endsWith(".png")) {
                         textureLoader.load(
                             x[1],
                             (mesh1) => {
@@ -92,7 +94,7 @@ export default function Main() {
 
                 loadingManager.onLoad = () => {
                     console.log(`Loaded FBX`, JSON.stringify(Array.from(Object.keys(l.fbx))));
-                    console.log(`Loaded GLTF`,JSON.stringify(Array.from(Object.keys(l.gltf))));
+                    console.log(`Loaded GLTF`, JSON.stringify(Array.from(Object.keys(l.gltf))));
                     console.log(`Loaded Textures`, JSON.stringify(Array.from(Object.keys(l.textures))));
                     SetProgress(1);
                     resolve(l);
@@ -106,7 +108,7 @@ export default function Main() {
             guess: "gltf/box/guess.gltf",
             sitting: "fbx/animations/sitting.fbx",
             xmap: "fbx/maps/xmap4.fbx",
-            ground:"textures/bricks500x500x2.png"
+            ground: "textures/bricks500x500x2.png",
         })
             .then((v) => {
                 SetLoadedMesh(v);
@@ -125,37 +127,63 @@ export default function Main() {
     }, []);
 
     return pvalue === 1 && loadedMesh !== undefined ? (
-        <>
+        <SettingsProvider>
             {socket === undefined ? (
-                <div className="menu">
-                    <main>
+                <div className="menu slider">
+                    <nav>
                         <button
-                            onClick={async () => {
-                                const ip = await navigator.clipboard.readText();
-                                if (ip === null) return;
-                                const socket = await io(ip);
-                                SetSocket(socket);
-                            }}
-                        >
-                            JOIN
-                        </button>
-                        <button
+                            data-selected={tab === 0}
                             onClick={() => {
-                                main(async (host) => {
-                                    const socket = await io(host);
-                                    SetSocket(socket);
-                                    navigator.clipboard.writeText(host);
-                                });
+                                SetTab(0);
                             }}
                         >
-                            CREATE
+                            Play
                         </button>
+                        <button
+                            data-selected={tab === 1}
+                            onClick={() => {
+                                SetTab(1);
+                            }}
+                        >
+                            Settings
+                        </button>
+                    </nav>
+                    <main>
+                        {tab == 1 ? (
+                            <>
+                               <SettingComp/>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={async () => {
+                                        const ip = await navigator.clipboard.readText();
+                                        if (ip === null) return;
+                                        const socket = await io(ip);
+                                        SetSocket(socket);
+                                    }}
+                                >
+                                    JOIN
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        main(async (host) => {
+                                            const socket = await io(host);
+                                            SetSocket(socket);
+                                            navigator.clipboard.writeText(host);
+                                        });
+                                    }}
+                                >
+                                    CREATE
+                                </button>
+                            </>
+                        )}
                     </main>
                 </div>
             ) : (
                 <App socket={socket} meshes={loadedMesh} />
             )}
-        </>
+        </SettingsProvider>
     ) : (
         <div className="progress">
             <h3>Loading</h3>
@@ -167,8 +195,12 @@ export default function Main() {
 }
 
 function App({ socket, meshes }: { socket: Socket | null; meshes: loadedAssets }) {
+    const settingsContext = useSettings();
     const [consoles, SetConsoles] = useState<Array<string>>([]);
     const [fps, SetFPS] = useState<number>(0);
+    const [velocityMeter, SetVelocityMeter] = useState<number>(0);
+    const [gameItem, SetItem] = useState<Item>(false);
+    const [effect, setEff] = useState<number>(0);
     function _console(...what: (string | any)[]) {
         let newa: string = "";
         for (const x of what) {
@@ -191,6 +223,10 @@ function App({ socket, meshes }: { socket: Socket | null; meshes: loadedAssets }
                     log: _console,
                     assets: meshes,
                     setFPS: SetFPS,
+                    setVEL: SetVelocityMeter,
+                    setITEM: SetItem,
+                    setEFFECT: setEff,
+                    settings: settingsContext.settings,
                 });
             } else {
                 requestAnimationFrame(waitForCanvas);
@@ -208,13 +244,12 @@ function App({ socket, meshes }: { socket: Socket | null; meshes: loadedAssets }
             <div className="gameContainer"></div>
 
             <div className="gameUI" id="kart">
-                <div className="right-bottom">
-                    <p>3rd</p>
+                <div className="right-bottom">3rd</div>
+                <div className="left-bottom">{velocityMeter.toFixed(2)} CC</div>
+                <div className="center-top">{fps.toFixed(0)} FPS</div>
+                <div className="right-top">
+                    {gameItem} {effect}
                 </div>
-                <div className="left-bottom">
-                    <p> 3</p>
-                </div>
-                <div className="right-top">{fps.toFixed(0)} FPS</div>
                 <div className="consoles">
                     {consoles.map((v) => (
                         <p>{v}</p>

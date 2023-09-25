@@ -20,7 +20,7 @@ export function QuaternionToQuat(v: THREE.Quaternion): CANNON.Quaternion {
 export function QuatToQuaternion(v: CANNON.Quaternion): THREE.Quaternion {
     return new THREE.Quaternion(v.x, v.y, v.z, v.w);
 }
-export function RotToQuat(e:THREE.Euler) {
+export function RotToQuat(e: THREE.Euler) {
     const quaternion = new CANNON.Quaternion();
     quaternion.setFromEuler(e.x, e.y, e.z);
     return quaternion;
@@ -42,3 +42,36 @@ export function calculateRotationMatrix(roll: number, pitch: number, yaw: number
 
     return rotationMatrix;
 }
+
+export const Random = {
+    // Generate a random number between min (inclusive) and max (exclusive)
+    int: (min: number, max: number) => {
+        return Math.floor(Math.random() * (max - min)) + min;
+    },
+    float: (min: number, max: number) => {
+        return Math.random() * (max - min) + min;
+    },
+    possibilities: function (outcomes: Record<number, number>): number {
+        // Extract the values and probabilities from the object
+        const values = Object.keys(outcomes).map((v) => parseInt(v));
+        const probabilities = Object.values(outcomes);
+
+        // Calculate the sum of probabilities
+        const totalProbability = probabilities.reduce((acc, prob) => acc + prob, 0);
+
+        // Generate a random number between 0 and the total probability
+        const randomValue = Math.random() * totalProbability;
+
+        // Find the outcome based on the random value and probabilities
+        let cumulativeProbability = 0;
+        for (let i = 0; i < values.length; i++) {
+            cumulativeProbability += probabilities[i];
+            if (randomValue < cumulativeProbability) {
+                return values[i];
+            }
+        }
+
+        // This should not happen, but return the last value just in case
+        return values[values.length - 1];
+    },
+};

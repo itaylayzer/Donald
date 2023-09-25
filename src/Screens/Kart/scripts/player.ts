@@ -2,6 +2,7 @@ import * as THREE from "three";
 import * as CANNON from "cannon-es";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { filtersDefenitions as filters } from "../assets/filters";
+import { Item } from "../assets/types";
 
 export class Player {
     public id: string;
@@ -11,6 +12,8 @@ export class Player {
     public mixer: THREE.AnimationMixer;
     public static onNew: (x: Player) => void = () => {};
     public static carMesh: { player: THREE.Group; car: THREE.Group };
+    public item: Item;
+    public effect:number;
     constructor(id: string, ifLocal?: boolean) {
         const material = new THREE.MeshStandardMaterial({ color: "red" });
         const car = Player.carMesh.car.clone();
@@ -58,8 +61,9 @@ export class Player {
                     shape: new CANNON.Box(new CANNON.Vec3(0.4, 1, 1)),
                 });
         }
-
+        this.item = false;
         this.id = id;
+        this.effect = 0;
         Player.onNew?.(this);
     }
 }

@@ -8,10 +8,15 @@ export class ItemCube {
     public mesh: THREE.Mesh;
     public body: CANNON.Body;
     public available: boolean;
-    public spin:boolean;
+    public spin: boolean;
     public static onNew: (x: ItemCube) => void = () => {};
 
-    constructor(mesh: THREE.Mesh, pos: [number, number, number], ava: boolean, onCollide: (event: { body: CANNON.Body | undefined }) => void) {
+    constructor(
+        mesh: THREE.Mesh,
+        pos: [number, number, number],
+        ava: boolean,
+        onCollide: (self: ItemCube) => (event: { body: CANNON.Body | undefined }) => void
+    ) {
         this.mesh = mesh.clone();
         this.mesh.position.set(pos[0], pos[1], pos[2]);
         var scale = 1;
@@ -30,9 +35,9 @@ export class ItemCube {
         this.body.position = new CANNON.Vec3(pos[0], pos[1], pos[2]);
         this.body.addShape(new CANNON.Box(new CANNON.Vec3(scale, scale, scale)));
         this.available = ava;
-        this.mesh.rotation.set(Math.random() * Math.PI,Math.random() * Math.PI,Math.random() * Math.PI)
-        this.body.addEventListener("collide", onCollide);
-        this.spin= true;
+        this.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        this.body.addEventListener("collide", onCollide(this));
+        this.spin = true;
         ItemCube.onNew(this);
     }
 
@@ -42,7 +47,7 @@ export class ItemCube {
         const startScale = this.mesh.scale.clone();
         const startRot = this.mesh.rotation;
         const endScale = new THREE.Vector3(0, 0, 0);
-        const endRot = new THREE.Vector3(this.mesh.rotation.x - Math.PI,this.mesh.rotation.y - Math.PI,this.mesh.rotation.z - Math.PI);
+        const endRot = new THREE.Vector3(this.mesh.rotation.x - Math.PI, this.mesh.rotation.y - Math.PI, this.mesh.rotation.z - Math.PI);
         const duration = 400; // Animation duration in milliseconds
 
         let interval: number;
@@ -91,9 +96,11 @@ export class ItemCube {
             .onComplete((x) => {
                 this.mesh.scale.copy(x);
                 clearInterval(interval);
-            }).onStart(()=>{
+            })
+            .onStart(() => {
                 f();
-            })            .start(0);
+            })
+            .start(0);
         let t = 0;
         interval = setInterval(() => {
             tween.update(t);

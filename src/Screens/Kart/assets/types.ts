@@ -20,3 +20,10 @@ export type loadedAssets = {
     fbx: { [key: string]: THREE.Group };
     textures: {[key:string]:THREE.Texture}
 }
+
+export type Item = number | false;
+
+export interface Settings {
+    videoScale:number,
+    fps:number
+}

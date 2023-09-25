@@ -5,7 +5,7 @@ import { QuaternionToQuat, RotToQuat, Vector3ToVec3 } from "../assets/functions"
 import CannonDebugger from "../utils/cannonDebugRenderer";
 import { lerp } from "three/src/math/MathUtils.js";
 import { Player } from "./player";
-import { CustomLight, IBoxList, loadedAssets } from "../assets/types";
+import { CustomLight, IBoxList, Item, Settings, loadedAssets } from "../assets/types";
 import { filtersDefenitions as filters } from "../assets/filters";
 import { ItemCube } from "./itemCube";
 
@@ -14,13 +14,25 @@ export default function Game({
     log,
     assets,
     setFPS,
+    setVEL,
+    setITEM,
+    setEFFECT,
+    settings,
 }: {
     socket: Socket | null;
     assets: loadedAssets;
     log: (...x: any[]) => void;
     setFPS: React.Dispatch<number>;
+    setVEL: React.Dispatch<number>;
+    setITEM: React.Dispatch<Item>;
+    setEFFECT: React.Dispatch<number>;
+    settings: Settings;
 }) {
+    console.log(`recieved Settings `, settings);
     const container = document.querySelector("div.gameContainer") as HTMLDivElement;
+    container.style.scale = `${1 / settings.videoScale}`;
+    container.style.width = `${container.clientWidth * settings.videoScale}px`;
+    container.style.height = `${container.clientHeight * settings.videoScale}px`;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
@@ -70,22 +82,15 @@ export default function Game({
     }
 
     Player.onNew = (x: Player) => {
-        if (x.mesh != null) addMesh(x.mesh);
+        if (x.mesh != null) scene.add(x.mesh);
         world.addBody(x.body);
         x.carBody ? world.addBody(x.carBody) : "";
         x.body.position.set(0, 10, 0);
     };
     ItemCube.onNew = (x) => {
-        addMesh(x.mesh);
+        scene.add(x.mesh);
         world.addBody(x.body);
     };
-
-    let meshesArr: THREE.Object3D[] = [];
-    function addMesh(...object: THREE.Object3D[]) {
-        meshesArr.push(...object);
-
-        scene.add(...object);
-    }
 
     const definedFbxs = assets.fbx as {
         player: THREE.Group;
@@ -106,7 +111,11 @@ export default function Game({
 
     const keyHandlers = {
         pressing: {},
-        up: {},
+        up: {
+            KeyJ: _UseItem,
+            Enter: _UseItem,
+            ShiftLeft: _UseItem,
+        },
         down: {},
     };
     const keysDown = new Set<string>();
@@ -250,7 +259,6 @@ export default function Game({
             xmapBody.collisionFilterGroup = filters.ground;
             xmapBody.collisionFilterMask = filters.ground | filters.carBody | filters.localCarBody;
             world.addBody(xmapBody);
-            log("added body!");
         }
         // scene.add(definedFbxs.xmap);
     }
@@ -332,12 +340,10 @@ export default function Game({
     const localPlayer = new Player(socket !== null ? socket.id : "", true);
     {
         const sittingPose = localPlayer.mixer.clipAction(definedFbxs.sitting.animations[0]);
-        
         sittingPose.play();
     }
-    
-   
-    function _socketInitiates(){
+
+    function _socketInitiates() {
         if (socket === null) return;
 
         socket.on("i", (args: { p: string[]; c: IBoxList }) => {
@@ -347,22 +353,23 @@ export default function Game({
                     const sittingPose = xplayer.mixer.clipAction(definedFbxs.sitting.animations[0]);
                     sittingPose.play();
                 }
-    
+
                 clients.set(x, xplayer);
             }
-    
+
             for (const x of Object.entries(args.c)) {
                 const xl = loadedMeshes["guess"];
-    
+
                 if (Array.isArray(xl.mesh)) {
                     continue;
                 }
-                const itemCube = new ItemCube(xl.mesh, x[1].pos, x[1].available, (event: { body: CANNON.Body | undefined }) => {
-                    if ((event.body ? event.body.id : "") === localPlayer.carBody?.id) {
+                const itemCube = new ItemCube(xl.mesh, x[1].pos, x[1].available, (self) => (event: { body: CANNON.Body | undefined }) => {
+                    if ((event.body ? event.body.id : "") === localPlayer.carBody?.id && self.available) {
+                        self.available = false;
                         socket.emit("b", x[0]);
                     }
                 });
-    
+
                 iboxes.set(x[0], itemCube);
             }
             clients.set(socket.id, localPlayer);
@@ -371,32 +378,29 @@ export default function Game({
         socket.on("ba", (a: { id: string; av: boolean }) => {
             const xbox = iboxes.get(a.id);
             if (xbox === undefined) return;
-    
-            if (a.av !== xbox.available) {
-                if (a.av) {
-                    xbox.appear(() => {
-                        addMesh(xbox.mesh);
-                        world.addBody(xbox.body);
-                    });
-                } else {
-                    xbox.disapear(
-                        () => {
-                            world.removeBody(xbox.body);
-                        },
-                        () => {
-                            scene.remove(xbox.mesh);
-                        }
-                    );
-                }
+            if (a.av) {
+                xbox.appear(() => {
+                    xbox.available = true;
+                    scene.add(xbox.mesh);
+                    world.addBody(xbox.body);
+                });
+            } else {
+                xbox.disapear(
+                    () => {
+                        xbox.available = false;
+                        world.removeBody(xbox.body);
+                    },
+                    () => {
+                        scene.remove(xbox.mesh);
+                    }
+                );
             }
-    
-            xbox.available = a.av;
         });
         socket.on("n-p", (x: string) => {
             const xplayer = new Player(x);
             const sittingPose = xplayer.mixer.clipAction(definedFbxs.sitting.animations[0]);
             sittingPose.play();
-    
+
             clients.set(x, xplayer);
         });
         socket.on("m", (args: { pos: [number, number, number]; rot: number; id: string }) => {
@@ -409,7 +413,7 @@ export default function Game({
             if (xplayer.mesh != null) xplayer.mesh.quaternion.set(_quaternion.x, _quaternion.y, _quaternion.z, _quaternion.w);
             xplayer.body.type === CANNON.BODY_TYPES.STATIC;
             xplayer.body.mass = 1;
-    
+
             if (xplayer.carBody) {
                 xplayer.carBody.position.set(args.pos[0], args.pos[1] + 0.5, args.pos[2]);
                 xplayer.carBody.quaternion.copy(_quaternion);
@@ -423,7 +427,25 @@ export default function Game({
             world.removeBody(xplayer.body);
             if (xplayer.mesh != null) scene.remove(xplayer.mesh);
         });
-        socket.on("br", () => {});
+        socket.on("br", (r: number) => {
+            if (localPlayer.item !== false || localPlayer.effect !== 0) return;
+            localPlayer.item = r;
+            setITEM(r);
+        });
+
+        socket.on("oui", () => {});
+        socket.on("se", (a: undefined | string) => {
+            if (typeof a === "undefined") {
+                localPlayer.effect = 0;
+            } else {
+                const xplayer = clients.get(a);
+                if (xplayer) {
+                    xplayer.effect = 0;
+                }
+            }
+            setEFFECT(localPlayer.effect);
+        });
+
         socket.emit("i");
     }
 
@@ -440,7 +462,7 @@ export default function Game({
     const cameraTarget = new THREE.Vector3(0, 0, 0);
     const clock = new THREE.Clock();
 
-    function _keyAxisHandle(){
+    function _keyAxisHandle(deltaTime: number) {
         const keysAxisRaw = {
             horizontal: keysDown.has("KeyD") && keysDown.has("KeyA") ? 0 : keysDown.has("KeyD") ? 1 : keysDown.has("KeyA") ? -1 : 0,
             vertical: keysDown.has("KeyW") && keysDown.has("KeyS") ? 0 : keysDown.has("KeyW") ? 1 : keysDown.has("KeyS") ? -1 : 0,
@@ -449,18 +471,18 @@ export default function Game({
         for (const key in Object.keys(keysAxis)) {
             const k = Object.keys(keysAxis)[key] as "horizontal" | "vertical";
 
-            keysAxis[k] = lerp(keysAxis[k], x[k], 0.05);
+            keysAxis[k] = lerp(keysAxis[k], x[k], deltaTime * 3);
         }
     }
-    function _rotateICubes(){
+    function _rotateICubes(fps: number) {
         for (const ib of iboxes) {
             if (ib[1].spin === false) continue;
-            ib[1].mesh.rotateX(0.015);
-            ib[1].mesh.rotateY(0.02);
-            ib[1].mesh.rotateZ(0.01);
+            ib[1].mesh.rotateX((0.015 * 60) / fps);
+            ib[1].mesh.rotateY((0.02 * 60) / fps);
+            ib[1].mesh.rotateZ((0.01 * 60) / fps);
         }
     }
-    function _mixerUpdate(){
+    function _mixerUpdate() {
         if (localPlayer.mixer != null) {
             localPlayer.mixer.update(0);
         }
@@ -468,10 +490,8 @@ export default function Game({
             xplayer.mixer?.update(0);
         }
     }
-
-    function _localPlayerMovement(){
-        
-        rotation -= keysAxis.horizontal * 2 * keysAxis.vertical;
+    function _localPlayerMovement(fps: number) {
+        rotation -= keysAxis.horizontal * 2 * keysAxis.vertical * (60 / fps);
         const _quaternion = new CANNON.Quaternion();
         const thetha = (rotation * Math.PI) / 180 + keysAxis.horizontal * 0.2 * keysAxis.vertical;
         spherical.phi = (Math.PI * (0.6 + keysAxis.vertical / 20)) / 2;
@@ -480,12 +500,20 @@ export default function Game({
         _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (rotation * Math.PI) / 180);
         const forwardVector = new CANNON.Vec3(0, 0, 1);
         const carForward = _quaternion.vmult(forwardVector);
-        const carVelocity = carForward.scale(keysAxis.vertical * 15);
+        const carVelocity = carForward.scale(
+            // 150CC = 20
+            // 100CC = 15
+            // 50CC = 5
+            (Math.abs(keysAxis.vertical) * 15 - Math.abs(keysAxis.horizontal) * 1.5) *
+                (keysAxis.vertical > 0 ? 1 : -0.7) *
+                (1 + +(localPlayer.effect === 1))
+        );
+        localPlayer.mesh.scale.lerp(new THREE.Vector3(1, 1, 1).multiplyScalar(1 + 2 * +(localPlayer.effect === 2)), 6 / fps);
         localPlayer.body.velocity = new CANNON.Vec3(carVelocity.x, localPlayer.body.velocity.y, carVelocity.z);
         // Update the camera position based on the spherical coordinates
-        cameraTarget.x = lerp(cameraTarget.x, localPlayer.body.position.x, 0.15);
-        cameraTarget.y = lerp(cameraTarget.y, localPlayer.body.position.y, 0.2);
-        cameraTarget.z = lerp(cameraTarget.z, localPlayer.body.position.z, 0.15);
+        cameraTarget.x = lerp(cameraTarget.x, localPlayer.body.position.x, 8 / fps);
+        cameraTarget.y = lerp(cameraTarget.y, localPlayer.body.position.y + 2 * +(localPlayer.effect === 2), 12 / fps);
+        cameraTarget.z = lerp(cameraTarget.z, localPlayer.body.position.z, 8 / fps);
 
         camera.position.setFromSpherical(spherical).add(cameraTarget);
 
@@ -505,23 +533,39 @@ export default function Game({
             localPlayer.carBody.position.set(localPlayer.body.position.x, localPlayer.body.position.y + 0.5, localPlayer.body.position.z);
             localPlayer.carBody.quaternion.copy(_quaternion);
             localPlayer.carBody.velocity.scale(0);
-        }        
-    }
+        }
 
-    function _emitLocalPlayerPositions(){
+        setVEL((localPlayer.body.velocity.length() * 100) / 15);
+    }
+    function _UseItem() {
+        const itemID = localPlayer.item;
+        setITEM(false);
+        localPlayer.item = false;
+        switch (itemID) {
+            case 0:
+                localPlayer.effect = 1;
+                break;
+            case 4:
+                localPlayer.effect = 2;
+                break;
+        }
+        setEFFECT(localPlayer.effect);
+        socket?.emit("ui", itemID);
+    }
+    function _emitLocalPlayerPositions() {
         socket?.emit("m", {
             pos: [localPlayer.body.position.x, localPlayer.body.position.y, localPlayer.body.position.z],
             rot: rotation,
         });
     }
 
-
     const animate = () => {
-        
+        const deltaTime = clock.getDelta();
+        const fps = 1 / deltaTime;
         // Player Controls
-        _keyAxisHandle();
-        _rotateICubes();
-        _localPlayerMovement();
+        _keyAxisHandle(deltaTime);
+        _rotateICubes(fps);
+        _localPlayerMovement(fps);
 
         // Forground Display
         // cannonDebugger.update();
@@ -529,11 +573,14 @@ export default function Game({
         _mixerUpdate();
 
         // Setups
-        setFPS(1 / clock.getDelta());
-        world.step(1 / 60);
+        setFPS(fps);
+
+        world.step(fps < 10 ? 1 / 60 : deltaTime);
         renderer.render(scene, camera);
     };
-    
 
-    renderer.setAnimationLoop(animate);
+    // renderer.setAnimationLoop(animate);
+    setInterval(() => {
+        animate();
+    }, 1000 / settings.fps);
 }

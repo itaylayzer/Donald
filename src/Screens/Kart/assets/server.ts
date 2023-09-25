@@ -1,6 +1,6 @@
 import { IBoxList, ItemBox } from "./types";
 import { Server, Socket } from "./socket.io";
-import { calculateRotationMatrix } from "./functions";
+import { calculateRotationMatrix, Random } from "./functions";
 
 function createCube(
     arr: Array<{
@@ -16,7 +16,7 @@ function createCube(
         for (var i = -(cube.count - 1) / 2; i < cube.count / 2; i++) {
             const [roll, pitch, yaw] = cube.mainRotation;
             const [mX, mY, mZ] = cube.mainPosition;
-            
+
             const rotationMatrix = calculateRotationMatrix(roll, pitch, yaw);
 
             const x = mX + cube.gap * i * rotationMatrix[0][0];
@@ -34,40 +34,18 @@ function createCube(
 
 export default function main(finished: (host: string) => void) {
     const clients = new Map<string, Socket>();
-    // const cubes = {
-    //     "0": {
-    //         available: true,
-    //         pos: [-8, 2, 3],
-    //     },
-    //     "1": {
-    //         available: true,
-    //         pos: [-4, 2, 3],
-    //     },
-    //     "2": {
-    //         available: true,
-    //         pos: [0, 2, 3],
-    //     },
-    //     "3": {
-    //         available: true,
-    //         pos: [4, 2, 3],
-    //     },
-    //     "4": {
-    //         available: true,
-    //         pos: [8, 2, 3],
-    //     },
-    // } as IBoxList;
     const cubes = createCube([
         {
             count: 5,
             mainPosition: [0, 2, 3],
             gap: 4,
-            mainRotation: [Math.PI/2,0,0],
+            mainRotation: [Math.PI / 2, 0, 0],
         },
         {
             count: 5,
             mainPosition: [0, 2, -20],
             gap: 4,
-            mainRotation: [Math.PI/2,0,0],
+            mainRotation: [Math.PI / 2, 0, 0],
         },
     ]);
     const EmitExcept = (id: string, name: string, args?: any) => {
@@ -99,20 +77,61 @@ export default function main(finished: (host: string) => void) {
             s.on("m", (args: { pos: [number, number, number]; rot: number }) => {
                 EmitExcept(s.id, "m", { ...args, id: s.id });
             });
+            // disconnect
             s.on("disconnect", () => {
                 EmitExcept(s.id, "p-dis", s.id);
                 clients.delete(s.id);
             });
+            // box collides with the socket
             s.on("b", (id: string) => {
                 if (Object.keys(cubes).includes(id)) {
                     cubes[id].available = false;
+                    // box availablity
                     EmitAll("ba", { id, av: cubes[id].available });
-                    s.emit("br");
+                    // box random result
+                    const br =  Random.possibilities({
+                        0:3,
+                        1:1,
+                        2:3,
+                        3:2,
+                        4:1,
+                        5:1
+                    });
+
+                    
+                    s.emit("br", br);
+
+                    // Other box random result
+                    EmitExcept(s.id, "obr", { id: s.id, br });
+
                     setTimeout(() => {
                         cubes[id].available = true;
+                        // box availablity
                         EmitAll("ba", { id, av: cubes[id].available });
                     }, 1500);
                 }
+            });
+            
+            // use item
+            s.on("ui",(itemCode)=>{
+                // other use item
+                EmitExcept(s.id, "oui",itemCode);
+                var seconds = 0;
+                switch(itemCode){
+                    case 0:
+                    case 4:
+                        seconds = 5;
+                        break;
+                }
+                // calculate when item expires and everything:
+                // stop effect
+                if (seconds > 0){
+                    setTimeout(()=>{
+                        s.emit("se", undefined)
+                        EmitExcept(s.id, "se", s.id);
+                    },seconds * 1000)
+                }
+               
             });
         }
     );

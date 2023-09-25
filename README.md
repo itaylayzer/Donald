@@ -7,10 +7,10 @@ Donald Games will include alot of developed part of the series Games like:
 3. Donald Mii
 
 ### Donald Kart & Donald Party 
-    Those games will be games Like Mario Kart and Mario Party but more officialy with more serius UI.
+Those games will be games Like Mario Kart and Mario Party but more officialy with more serius UI.
 
 ### The Donald Mii will be like an Envelope to the Games Series:
-    that means, in the Donald Mii Players will be able to create their Custom Donald Character, customizeable Like Wii Mii, and those characters will be saved in the cookies, and will be playeable trough each part of the series Game.
+that means, in the Donald Mii Players will be able to create their Custom Donald Character, customizeable Like Wii Mii, and those characters will be saved in the cookies, and will be playeable trough each part of the series Game.
 
 ## Credits
 without those assets the game wasn't exists
@@ -25,20 +25,22 @@ without those assets the game wasn't exists
 ## Todo:
 ### Donald Kart:
 1. **Prototype**
-    1. Three Particle System
-    2. Item Cube System
+    <!-- 1. Three Particle System -->
+    1. Item Cube System
         1. Pictures & Labels
         2. Functunality Per Item
         3. Particle System
         4. Sound Effects
-    3. Race Cannon Body
-    4. Precentage Of Player in Race
-        1. System For Identifying Precentage
-        2. Get For each Client his Position in Race
-    5. Winning And Loosing
-    6. Hubs & Lobbies
-        1. Firebase / JSONBIN.io For Entries
-    7. Gamepad ?
+    2. Race Map System
+        1. Cannon Body
+        2. Precentage Of Player in Race
+            1. System For Identifying Precentage
+            2. Get For each Client his Position in Race
+        3. Falling From Map Handeling
+        4. Winning And Loosing
+    4. Hubs & Lobbies
+        1. Firebase / JSONBIN.io For Entries and Servers Searching
+    5. Gamepad ?
 2. **Product**
     1. Player Models
     2. Race Models
