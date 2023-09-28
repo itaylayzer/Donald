@@ -11,13 +11,14 @@ import { Socket, io } from "./assets/socket.io.ts";
 import main from "./assets/server.ts";
 import { Item, loadedAssets } from "./assets/types.ts";
 import Game from "./scripts/game";
-import { SettingsProvider, useSettings } from "./assets/contexts";
+import { SettingsProvider, useSettings } from "./component/contexts.tsx";
 import SettingComp from "./component/settings.tsx";
+import { meshes } from "./assets/inputs.ts";
+
 export default function Main() {
     const [socket, SetSocket] = useState<Socket | undefined | null>(undefined);
     const [pvalue, SetProgress] = useState<number>(0);
     const [loadedMesh, SetLoadedMesh] = useState<loadedAssets | undefined>(undefined);
-
     const [tab, SetTab] = useState<number>(0);
     useEffect(() => {
         function loadMeshes(items: { [key: string]: string }): Promise<loadedAssets> {
@@ -101,18 +102,9 @@ export default function Main() {
                 };
             });
         }
-
-        loadMeshes({
-            player: "fbx/endy-rigged.fbx",
-            car: "fbx/motor.fbx",
-            guess: "gltf/box/guess.gltf",
-            sitting: "fbx/animations/sitting.fbx",
-            xmap: "fbx/maps/xmap4.fbx",
-            ground: "textures/bricks500x500x2.png",
-        })
+        loadMeshes(meshes)
             .then((v) => {
                 SetLoadedMesh(v);
-
                 if (document.location.search.length > 0 && document.location.search.includes("null")) {
                     main(async (host) => {
                         const socket = await io(host);
@@ -124,7 +116,7 @@ export default function Main() {
             .catch((r) => {
                 console.error(r);
             });
-    }, []);
+    },[]);
 
     return pvalue === 1 && loadedMesh !== undefined ? (
         <SettingsProvider>
@@ -151,7 +143,7 @@ export default function Main() {
                     <main>
                         {tab == 1 ? (
                             <>
-                               <SettingComp/>
+                                <SettingComp />
                             </>
                         ) : (
                             <>
@@ -171,7 +163,11 @@ export default function Main() {
                                             const socket = await io(host);
                                             SetSocket(socket);
                                             navigator.clipboard.writeText(host);
+
+                                            
                                         });
+
+                                        
                                     }}
                                 >
                                     CREATE
@@ -181,7 +177,9 @@ export default function Main() {
                     </main>
                 </div>
             ) : (
-                <App socket={socket} meshes={loadedMesh} />
+                <App socket={socket} meshes={loadedMesh} exit={()=>{
+                    SetSocket(undefined);
+                }} />
             )}
         </SettingsProvider>
     ) : (
@@ -194,7 +192,7 @@ export default function Main() {
     );
 }
 
-function App({ socket, meshes }: { socket: Socket | null; meshes: loadedAssets }) {
+function App({ socket, meshes,exit }: { socket: Socket | null; meshes: loadedAssets; exit:()=>void }) {
     const settingsContext = useSettings();
     const [consoles, SetConsoles] = useState<Array<string>>([]);
     const [fps, SetFPS] = useState<number>(0);
@@ -234,21 +232,32 @@ function App({ socket, meshes }: { socket: Socket | null; meshes: loadedAssets }
         }
         requestAnimationFrame(waitForCanvas);
 
-        return () => {
+        return (()=>{
             document.location.reload();
-        };
-    }, []);
+        })
+    },[exit]);
 
     return (
         <>
             <div className="gameContainer"></div>
 
             <div className="gameUI" id="kart">
+                <video id="troll" src="videos/troll.mp4"></video>
                 <div className="right-bottom">3rd</div>
                 <div className="left-bottom">{velocityMeter.toFixed(2)} CC</div>
                 <div className="center-top">{fps.toFixed(0)} FPS</div>
                 <div className="right-top">
-                    {gameItem} {effect}
+                    {effect} {gameItem !== 3 && gameItem !== 1?(<>
+                        <img style={{scale:'0.5'}} src={
+                          gameItem === 0 ? "sprites/star.png"
+                        : gameItem === 2 ? "sprites/stop.png"
+                        : gameItem === 4 ? "sprites/biggie.png"
+                        : gameItem === 5 ? "sprites/troll.png"
+                        :""
+                    
+                    } alt="" />
+                    
+                    </>):(<>{gameItem}</>)} 
                 </div>
                 <div className="consoles">
                     {consoles.map((v) => (

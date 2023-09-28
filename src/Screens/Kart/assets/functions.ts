@@ -1,5 +1,8 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
+import { Player } from "../scripts/player";
+import tweenModule, { Easing } from "three/examples/jsm/libs/tween.module.js";
+import StopSign from "../scripts/stopSign";
 
 export function cubicBezier(p0: number, p1: number, p2: number, p3: number) {
     return (t: number) => {
@@ -73,5 +76,55 @@ export const Random = {
 
         // This should not happen, but return the last value just in case
         return values[values.length - 1];
+    },
+};
+
+export const TWWEENS = {
+    deltaTime: (deltaTime: number) => {
+        return {
+            playerScale: (p: Player, scale: THREE.Vector3 | number, duration:number = 400) => {
+                const startScale = p.mesh.scale.clone();
+                const endScale = typeof scale === 'number' ? new THREE.Vector3(scale,scale,scale) : scale;
+
+                let interval: number;
+                const tween2 = new tweenModule.Tween(startScale)
+                    .to(endScale, duration)
+                    .easing(Easing.Back.InOut)
+                    .onUpdate((x) => {
+                        p.mesh.scale.copy(x);
+                    })
+                    .onComplete(() => {
+                        clearInterval(interval);
+                    })
+                    .start(0);
+                let t = 0;
+                interval = setInterval(() => {
+                    tween2.update(t);
+                    t += deltaTime * 1000;
+                }, deltaTime * 1000);
+            },
+            stopSign:(ss:StopSign,fun:()=>void)=>{
+                const startScale = ss.mesh.scale.clone();
+                const endScale = new THREE.Vector3(0,0,0);
+
+                let interval: number;
+                const tween2 = new tweenModule.Tween(startScale)
+                    .to(endScale, 500)
+                    .easing(Easing.Back.In)
+                    .onUpdate((x) => {
+                        ss.mesh.scale.copy(x);
+                    })
+                    .onComplete(() => {
+                        clearInterval(interval);
+                        fun();
+                    })
+                    .start(0);
+                let t = 0;
+                interval = setInterval(() => {
+                    tween2.update(t);
+                    t += deltaTime * 1000;
+                }, deltaTime * 1000);
+            }
+        };
     },
 };

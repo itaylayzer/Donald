@@ -1,4 +1,4 @@
-import { useSettings, saveGameSettingsToCookie } from "../assets/contexts";
+import { useSettings, saveGameSettingsToCookie } from "./contexts";
 import Slider from "../utils/slider";
 
 export default function settingComp() {

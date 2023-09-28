@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
 import tweenModule, { Easing } from "three/examples/jsm/libs/tween.module.js";
-import { filtersDefenitions as filters } from "../assets/filters";
+import { filtersDefenitions as filters } from "../assets/inputs";
 
 // https://sole.github.io/tween.js/examples/03_graphs.html
 export class ItemCube {
@@ -9,6 +9,7 @@ export class ItemCube {
     public body: CANNON.Body;
     public available: boolean;
     public spin: boolean;
+    public static fps: number;
     public static onNew: (x: ItemCube) => void = () => {};
 
     constructor(
@@ -77,8 +78,8 @@ export class ItemCube {
         interval = setInterval(() => {
             tween2.update(t);
             tween1.update(t);
-            t += 16;
-        }, 16);
+            t += 1000 / ItemCube.fps;
+        }, 1000 / ItemCube.fps);
     }
     // The f Function is uploading the mesh back to the scene
     public appear(f: () => void) {
@@ -104,7 +105,7 @@ export class ItemCube {
         let t = 0;
         interval = setInterval(() => {
             tween.update(t);
-            t += 16;
-        }, 16);
+            t += 1000 / ItemCube.fps;
+        }, 1000 / ItemCube.fps);
     }
 }

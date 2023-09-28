@@ -89,16 +89,16 @@ export default function main(finished: (host: string) => void) {
                     // box availablity
                     EmitAll("ba", { id, av: cubes[id].available });
                     // box random result
-                    const br =  Random.possibilities({
-                        0:3,
-                        1:1,
-                        2:3,
-                        3:2,
-                        4:1,
-                        5:1
+                    const br = 
+                    Random.possibilities({
+                        0: 3,
+                        1: 1,
+                        2: 3,
+                        3: 2,
+                        4: 1,
+                        5: 1,
                     });
 
-                    
                     s.emit("br", br);
 
                     // Other box random result
@@ -111,13 +111,13 @@ export default function main(finished: (host: string) => void) {
                     }, 1500);
                 }
             });
-            
+
             // use item
-            s.on("ui",(itemCode)=>{
+            s.on("ui", (itemCode: number) => {
                 // other use item
-                EmitExcept(s.id, "oui",itemCode);
-                var seconds = 0;
-                switch(itemCode){
+                EmitAll("ui", { p: s.id, v: itemCode });
+                let seconds = 0;
+                switch (itemCode) {
                     case 0:
                     case 4:
                         seconds = 5;
@@ -125,13 +125,16 @@ export default function main(finished: (host: string) => void) {
                 }
                 // calculate when item expires and everything:
                 // stop effect
-                if (seconds > 0){
-                    setTimeout(()=>{
-                        s.emit("se", undefined)
-                        EmitExcept(s.id, "se", s.id);
-                    },seconds * 1000)
+                if (seconds > 0) {
+                    setTimeout(() => {
+                        EmitAll("se", { p: s.id, v: itemCode });
+                    }, seconds * 1000);
                 }
-               
+            });
+
+            // apply effect, mostly for stammped | 3
+            s.on("ae", (args:{p: string, e:number}) => {
+                EmitAll("ae", args);
             });
         }
     );

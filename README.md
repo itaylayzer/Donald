@@ -20,7 +20,9 @@ without those assets the game wasn't exists
 2. Sound Credits
     1. Main Menu - [2022](https://youtu.be/jCia_eCW4ps?si=qh3TvEEyyrB6aM1F) @K.Shiraki
     2. Selection Menu - [Cheerful Girl](https://youtu.be/sPgXN2Ficso?si=Hl7dbmpIitaRj7Xv) @K.Shiraki
-
+3. Sprites Credits:
+    1. [Monkey Icon](https://game-icons.net/1x1/lorc/monkey.html)
+    2. [Evolution Icon](https://thenounproject.com/browse/icons/term/evolution/)
 
 ## Todo:
 ### Donald Kart:
