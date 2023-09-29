@@ -116,7 +116,7 @@ export default function Main() {
             .catch((r) => {
                 console.error(r);
             });
-    },[]);
+    }, []);
 
     return pvalue === 1 && loadedMesh !== undefined ? (
         <SettingsProvider>
@@ -163,11 +163,7 @@ export default function Main() {
                                             const socket = await io(host);
                                             SetSocket(socket);
                                             navigator.clipboard.writeText(host);
-
-                                            
                                         });
-
-                                        
                                     }}
                                 >
                                     CREATE
@@ -177,9 +173,13 @@ export default function Main() {
                     </main>
                 </div>
             ) : (
-                <App socket={socket} meshes={loadedMesh} exit={()=>{
-                    SetSocket(undefined);
-                }} />
+                <App
+                    socket={socket}
+                    meshes={loadedMesh}
+                    exit={() => {
+                        SetSocket(undefined);
+                    }}
+                />
             )}
         </SettingsProvider>
     ) : (
@@ -192,13 +192,15 @@ export default function Main() {
     );
 }
 
-function App({ socket, meshes,exit }: { socket: Socket | null; meshes: loadedAssets; exit:()=>void }) {
+function App({ socket, meshes, exit }: { socket: Socket | null; meshes: loadedAssets; exit: () => void }) {
     const settingsContext = useSettings();
     const [consoles, SetConsoles] = useState<Array<string>>([]);
     const [fps, SetFPS] = useState<number>(0);
     const [velocityMeter, SetVelocityMeter] = useState<number>(0);
     const [gameItem, SetItem] = useState<Item>(false);
     const [effect, setEff] = useState<number>(0);
+    const [playerPos, SetPos] = useState<number>(0);
+    const [playerRounds, setRounds] = useState<number>(0);
     function _console(...what: (string | any)[]) {
         let newa: string = "";
         for (const x of what) {
@@ -224,6 +226,8 @@ function App({ socket, meshes,exit }: { socket: Socket | null; meshes: loadedAss
                     setVEL: SetVelocityMeter,
                     setITEM: SetItem,
                     setEFFECT: setEff,
+                    setROUNDS:setRounds,
+                    setPOS:SetPos,
                     settings: settingsContext.settings,
                 });
             } else {
@@ -232,10 +236,10 @@ function App({ socket, meshes,exit }: { socket: Socket | null; meshes: loadedAss
         }
         requestAnimationFrame(waitForCanvas);
 
-        return (()=>{
+        return () => {
             document.location.reload();
-        })
-    },[exit]);
+        };
+    }, [exit]);
 
     return (
         <>
@@ -243,21 +247,32 @@ function App({ socket, meshes,exit }: { socket: Socket | null; meshes: loadedAss
 
             <div className="gameUI" id="kart">
                 <video id="troll" src="videos/troll.mp4"></video>
-                <div className="right-bottom">3rd</div>
+                <div className="right-bottom">{playerPos}rd {playerRounds}/3 rounds</div>
                 <div className="left-bottom">{velocityMeter.toFixed(2)} CC</div>
                 <div className="center-top">{fps.toFixed(0)} FPS</div>
                 <div className="right-top">
-                    {effect} {gameItem !== 3 && gameItem !== 1?(<>
-                        <img style={{scale:'0.5'}} src={
-                          gameItem === 0 ? "sprites/star.png"
-                        : gameItem === 2 ? "sprites/stop.png"
-                        : gameItem === 4 ? "sprites/biggie.png"
-                        : gameItem === 5 ? "sprites/troll.png"
-                        :""
-                    
-                    } alt="" />
-                    
-                    </>):(<>{gameItem}</>)} 
+                    {effect}{" "}
+                    {gameItem !== 3 && gameItem !== 1 ? (
+                        <>
+                            <img
+                                style={{ scale: "0.5" }}
+                                src={
+                                    gameItem === 0
+                                        ? "sprites/star.png"
+                                        : gameItem === 2
+                                        ? "sprites/stop.png"
+                                        : gameItem === 4
+                                        ? "sprites/biggie.png"
+                                        : gameItem === 5
+                                        ? "sprites/troll.png"
+                                        : ""
+                                }
+                                alt=""
+                            />
+                        </>
+                    ) : (
+                        <>{gameItem}</>
+                    )}
                 </div>
                 <div className="consoles">
                     {consoles.map((v) => (

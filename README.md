@@ -23,30 +23,25 @@ without those assets the game wasn't exists
 3. Sprites Credits:
     1. [Monkey Icon](https://game-icons.net/1x1/lorc/monkey.html)
     2. [Evolution Icon](https://thenounproject.com/browse/icons/term/evolution/)
-
+    3. [Wheel Icon](https://www.veryicon.com/icons/transport/shopping-mall/wheel-10.html)
 ## Todo:
 ### Donald Kart:
 1. **Prototype**
     <!-- 1. Three Particle System -->
     1. Item Cube System
-        1. Pictures & Labels
-        2. Functunality Per Item
-        3. Particle System
-        4. Sound Effects
-    2. Race Map System
-        1. Cannon Body
-        2. Precentage Of Player in Race
-            1. System For Identifying Precentage
-            2. Get For each Client his Position in Race
-        3. Falling From Map Handeling
-        4. Winning And Loosing
-    4. Hubs & Lobbies
-        1. Firebase / JSONBIN.io For Entries and Servers Searching
-    5. Gamepad ?
+        1. Pictures & Labels [Rocket, Wheel]
+        2. Functunality Per Item [Rocket, Wheel]
+    2. Gamepad
+
 2. **Product**
     1. Player Models
     2. Race Models
     3. Animations
+    4. Sound Effects
+    5. Particle System
+    6. Hubs & Lobbies
+        1. Firebase / JSONBIN.io For Entries and Servers Searching
+
 ### Donald Party:
 1. **Prototype**
     1. Map

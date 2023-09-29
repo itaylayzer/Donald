@@ -1,24 +1,29 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
 import { Socket } from "../assets/socket.io";
-import { QuaternionToQuat, RotToQuat, TWWEENS, Vector3ToVec3 } from "../assets/functions";
+import { QuaternionToQuat, RotToQuat, TWWEENS, Vec3ToVector3, Vector3ToVec3 } from "../assets/functions";
 import CannonDebugger from "../utils/cannonDebugRenderer";
 import { lerp } from "three/src/math/MathUtils.js";
-import { Player } from "./player";
+import { Player } from "../classess/player";
 import { CustomLight, IBoxList, Item, Settings, loadedAssets } from "../assets/types";
 import { filtersDefenitions as filters } from "../assets/inputs";
-import { ItemCube } from "./itemCube";
-import StopSign from "./stopSign";
+import { ItemCube } from "../classess/itemCube";
+import StopSign from "../classess/stopSign";
 import { groundMaterial, ground_cm } from "../assets/materials";
+import curveJSON from "../assets/curveJSON.json";
+import { MapCurve } from "../classess/mapCurve";
 
 export default function Game({
     socket,
+    // @ts-ignore
     log,
     assets,
     setFPS,
     setVEL,
     setITEM,
     setEFFECT,
+    setROUNDS,
+    setPOS,
     settings,
 }: {
     socket: Socket | null;
@@ -28,11 +33,16 @@ export default function Game({
     setVEL: React.Dispatch<number>;
     setITEM: React.Dispatch<Item>;
     setEFFECT: React.Dispatch<number>;
+    setROUNDS: React.Dispatch<number>;
+    setPOS: React.Dispatch<number>;
     settings: Settings;
 }) {
     let deltaTime = 0,
         fps = 0;
     console.log(`recieved Settings `, settings);
+
+    const mapCurve = new MapCurve(curveJSON.points);
+
     const container = document.querySelector("div.gameContainer") as HTMLDivElement;
     container.style.scale = `${1 / settings.videoScale}`;
     container.style.width = `${container.clientWidth * settings.videoScale}px`;
@@ -55,10 +65,14 @@ export default function Game({
 
     function createCannonFromGeometry(
         geometry: THREE.BufferGeometry,
-        options?: {
+        options: {
             quaternion?: THREE.Quaternion;
             position?: THREE.Vector3;
             rotation?: THREE.Euler;
+            mass?: number;
+            collisionFilterGroup?: number;
+            collisionFilterMask?: number;
+            material?: CANNON.Material;
         }
     ) {
         // Convert Three.js geometry to CANNON.js format.
@@ -69,9 +83,14 @@ export default function Game({
         const shape = new CANNON.Trimesh(vertices, faces);
 
         // Create a CANNON body for the mesh.
-        const body = new CANNON.Body({ mass: 0 }); // Set mass to 0 for a static object.
+        const body = new CANNON.Body({
+            mass: options.mass ?? 0,
+            collisionFilterGroup: options.collisionFilterGroup ?? undefined,
+            collisionFilterMask: options.collisionFilterMask ?? undefined,
+            material: options.material ?? undefined,
+        }); // Set mass to 0 for a static object.
         body.addShape(shape);
-        if (options) {
+        {
             if (options.position) {
                 body.position = Vector3ToVec3(options.position);
             }
@@ -94,7 +113,7 @@ export default function Game({
     ItemCube.onNew = (x) => {
         const levelOfDetails = new THREE.LOD();
         levelOfDetails.addLevel(x.mesh, 5);
-        
+
         scene.add(levelOfDetails);
         world.addBody(x.body);
     };
@@ -103,7 +122,6 @@ export default function Game({
         player: THREE.Group;
         car: THREE.Group;
         sitting: THREE.Group;
-        xmap: THREE.Group;
     };
 
     const loadedMeshes: {
@@ -116,14 +134,31 @@ export default function Game({
     const clients = new Map<string, Player>();
     const iboxes = new Map<string, ItemCube>();
 
+    let worldMeshes: Array<THREE.Mesh> | undefined = undefined;
     const keyHandlers = {
         pressing: {},
         up: {
             KeyJ: _UseItem,
             Enter: _UseItem,
             ShiftLeft: _UseItem,
+            KeyV: () => {
+                if (worldMeshes) {
+                    scene.remove(...worldMeshes);
+                    worldMeshes = undefined;
+                }
+            },
         },
-        down: {},
+        down: {
+            // KeyF:()=>{
+            //     const pos = new MapCurve(curveJSON.points).getNearestPoint(Vec3ToVector3(localPlayer.body.position));
+            //     localPlayer.body.position.copy(Vector3ToVec3(pos).vadd(new CANNON.Vec3(0,10,0)));
+            // }
+
+            KeyV: () => {
+                worldMeshes = mapCurve.meshes();
+                scene.add(...worldMeshes);
+            },
+        },
     };
     const keysDown = new Set<string>();
 
@@ -131,7 +166,7 @@ export default function Game({
         var texture = assets.textures["ground"];
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         texture.offset.set(0, 0);
-        texture.repeat.set(200, 200);
+        texture.repeat.set(5, 5);
 
         var material = new THREE.MeshPhongMaterial({
             color: 0xffffff,
@@ -141,18 +176,88 @@ export default function Game({
             clipShadows: true,
         });
 
-        const groundMesh = new THREE.Mesh(new THREE.BoxGeometry(200, 0.4, 200), material);
-        const groundBody = new CANNON.Body({
-            mass: 0,
-            shape: new CANNON.Box(new CANNON.Vec3(100, 0.2, 100)),
-            position: new CANNON.Vec3(0, 0, 0),
-            material: groundMaterial,
-            collisionFilterGroup: filters.ground,
-            collisionFilterMask: filters.ground | filters.carBody | filters.localCarBody | filters.stopSign | filters.localPlayerBody,
-        });
+        console.log(assets.gltf.xmap);
+        const xmap = assets.gltf.xmap.scene;
+        scene.add(xmap);
+        console.log(xmap);
+        console.log(xmap.children);
 
-        scene.add(groundMesh);
-        world.addBody(groundBody);
+        if (xmap.children.length > 0) {
+            if (xmap.children[0] as THREE.Mesh) {
+                const xmapMesh = xmap.children[0] as THREE.Mesh;
+                xmapMesh.material = material;
+                const xmapBody = createCannonFromGeometry(xmapMesh.geometry, {
+                    position: xmap.position,
+                    rotation: xmap.rotation,
+                    mass: 0,
+                    collisionFilterGroup: filters.ground,
+                    collisionFilterMask: filters.ground | filters.carBody | filters.localCarBody | filters.stopSign | filters.localPlayerBody,
+                    material: groundMaterial,
+                });
+                world.addBody(xmapBody);
+            }
+        }
+
+        {
+            // create winning mesh and winning collider
+
+            const winningMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(20, 10, 1),
+                new THREE.MeshStandardMaterial({
+                    opacity: 0.4,
+                    transparent: true,
+                    color: "green",
+                })
+            );
+            winningMesh.position.copy(mapCurve.get(80)).add(new THREE.Vector3(0, 5, 0));
+
+            const winningBody = new CANNON.Body({
+                isTrigger: true,
+                collisionFilterGroup: filters.itemBox,
+                collisionFilterMask: filters.localCarBody,
+                shape: new CANNON.Box(new CANNON.Vec3(10, 5, 0.1)),
+                position: Vector3ToVec3(winningMesh.position),
+                quaternion: QuaternionToQuat(winningMesh.quaternion),
+            });
+
+            winningBody.addEventListener("collide", (event: { body: CANNON.Body | undefined }) => {
+                if (event.body === undefined) return;
+                // First Condition: The plyaer is local PLayer
+                // Second Condition: Rotation supposed to be 90<x<270
+                // FIXME: Third Condition: Winning Not working for backwards
+                // LATER: Needs to check if the player is moving away from the winning body,
+                // unless worn him of cheating.
+                const rotation = localPlayer.rotation % 360;
+                if (event.body.id === localPlayer.carBody.id && rotation > 90 && rotation < 270) {
+                    winningBody.collisionFilterMask = 0;
+                    // DONT KNOW WHY THE EVENT REPEATING 4 TIMES!
+                    if (localPlayer.rounds % 1 == 0) {
+                        localPlayer.rounds += 0.5;
+                        socket?.emit("r", Math.ceil(localPlayer.rounds));
+                        winningMesh.material.opacity = 0;
+                        setTimeout(() => {
+                            winningBody.collisionFilterMask = filters.localCarBody;
+                            winningMesh.material.opacity = 0.4;
+                        }, 2 * 1000);
+                    }
+                }
+            });
+            world.addBody(winningBody);
+            scene.add(winningMesh);
+        }
+
+        // const groundMesh = new THREE.Mesh(new THREE.BoxGeometry(200, 0.4, 200), material);
+        // const groundBody = new CANNON.Body({
+        //     mass: 0,
+        //     shape: new CANNON.Box(new CANNON.Vec3(100, 0.2, 100)),
+        //     position: new CANNON.Vec3(0, 0, 0),
+        //     material: groundMaterial,
+        //     collisionFilterGroup: filters.ground,
+        //     collisionFilterMask: filters.ground | filters.carBody | filters.localCarBody | filters.stopSign | filters.localPlayerBody,
+        // });
+
+        // scene.add(groundMesh);
+        // world.addBody(groundBody);
 
         world.addContactMaterial(ground_cm);
     }
@@ -161,7 +266,7 @@ export default function Game({
             const _mesh = x[1].scene.children[0]; // Assuming there's only one mesh in the GLTF
 
             if (_mesh.children.length > 0) {
-                log("_mesh.children.length > 0", x[0], _mesh.children.length);
+                // log("_mesh.children.length > 0", x[0], _mesh.children.length);
 
                 const xbodies: CANNON.Body[] = [];
                 const xmeshes: THREE.Mesh[] = [];
@@ -252,24 +357,6 @@ export default function Game({
             car: definedFbxs.car,
             player: definedFbxs.player,
         };
-        definedFbxs.xmap.scale.multiplyScalar(0.01);
-        // @ts-ignore
-        globalThis.xmap = definedFbxs.xmap;
-        if (definedFbxs.xmap.children[0] as THREE.Mesh) {
-            console.log((definedFbxs.xmap.children[0] as THREE.Mesh).geometry);
-            const xmapBody = createCannonFromGeometry((definedFbxs.xmap.children[0] as THREE.Mesh).geometry, {
-                position: definedFbxs.xmap.position,
-                rotation: new THREE.Euler().setFromVector3(
-                    new THREE.Vector3().setFromEuler(definedFbxs.xmap.rotation).add(new THREE.Vector3(-Math.PI / 2, 0, 0))
-                ),
-            });
-            // (definedFbxs.xmap.children[0] as THREE.Mesh).material = groundMesh.material;
-            xmapBody.mass = 0;
-            xmapBody.collisionFilterGroup = filters.ground;
-            xmapBody.collisionFilterMask = filters.ground | filters.carBody | filters.localCarBody;
-            // world.addBody(xmapBody);
-        }
-        // scene.add(definedFbxs.xmap);
     }
     function _windowEvents() {
         document.onkeydown = (event) => {
@@ -383,7 +470,6 @@ export default function Game({
 
                 iboxes.set(x[0], itemCube);
             }
-            clients.set(socket.id, localPlayer);
         });
 
         socket.on("ba", (a: { id: string; av: boolean }) => {
@@ -501,12 +587,30 @@ export default function Game({
         socket.on("ae", (a: { p: string; e: number }) => {
             const xplayer = a.p === socket.id ? localPlayer : clients.get(a.p);
             if (xplayer === undefined) return;
-            log("stammped to the ground");
             xplayer.StampedToTheGround(2);
+        });
+        socket.on("r", (args: { r: number; p: string }) => {
+            const xplayer = args.p === socket.id ? localPlayer : clients.get(args.p);
+            if (xplayer === undefined) return;
+
+            xplayer.rounds = args.r;
+            setROUNDS(localPlayer.rounds);
+
+            if (args.r === 3) {
+                //TODO: he won!
+            }
         });
         socket.emit("i");
     }
 
+    // const redBox = new THREE.Mesh(new THREE.BoxGeometry(1,1,1),undefined);
+    // scene.add(redBox);
+
+    // function _helper_roadPosInit(){
+    //     // const pos = mapCurve.getNearestPoint(Vec3ToVector3(localPlayer.body.position)).add(new THREE.Vector3(0,1,0));
+    //     // redBox.position.copy(pos);
+
+    // }
     _socketInitiates();
 
     // @ts-ignore
@@ -552,22 +656,33 @@ export default function Game({
         cameraTarget.y = lerp(cameraTarget.y, localPlayer.body.position.y + 2 * +(localPlayer.effect === 2), 12 / fps);
         cameraTarget.z = lerp(cameraTarget.z, localPlayer.body.position.z, 8 / fps);
 
+        const thetha = (localPlayer.rotation * Math.PI) / 180 + keysAxis.horizontal * 0.2 * keysAxis.vertical;
+        spherical.phi = (Math.PI * (0.6 + keysAxis.vertical / 20)) / 2;
+        spherical.theta = thetha + Math.PI;
+
         camera.position.setFromSpherical(spherical).add(cameraTarget);
-
         camera.lookAt(cameraTarget);
-
-        setVEL((localPlayer.body.velocity.length() * 100) / 15);
-        if (!localPlayer.moveable) return;
 
         camera.rotateZ(keysAxis.horizontal / 20);
 
-        localPlayer.rotation -= keysAxis.horizontal * 2 * keysAxis.vertical * (60 / fps);
         const _quaternion = new CANNON.Quaternion();
-        const thetha = (localPlayer.rotation * Math.PI) / 180 + keysAxis.horizontal * 0.2 * keysAxis.vertical;
-        spherical.phi = (Math.PI * (0.6 + keysAxis.vertical / 20)) / 2;
-
-        spherical.theta = thetha + Math.PI;
         _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (localPlayer.rotation * Math.PI) / 180);
+
+        if (localPlayer.mesh != null) {
+            localPlayer.mesh.position.set(localPlayer.body.position.x, localPlayer.body.position.y - 0.2, localPlayer.body.position.z);
+            localPlayer.mesh.quaternion.set(_quaternion.x, _quaternion.y, _quaternion.z, _quaternion.w);
+            localPlayer.mesh.rotateZ((keysAxis.horizontal * 3.14) / 15);
+        }
+        setVEL((localPlayer.body.velocity.length() * 100) / 15);
+        if (!localPlayer.moveable) return;
+        if (localPlayer.body.position.y < -20) {
+            TWWEENS.deltaTime(deltaTime).playerPosition(
+                localPlayer,
+                1000,
+                mapCurve.getNearestPoint(Vec3ToVector3(localPlayer.body.position)).add(new THREE.Vector3(0, 10, 0))
+            );
+        }
+        localPlayer.rotation -= keysAxis.horizontal * 2 * keysAxis.vertical * (60 / fps);
         const forwardVector = new CANNON.Vec3(0, 0, 1);
         const carForward = _quaternion.vmult(forwardVector);
         const carVelocity = carForward.scale(
@@ -586,11 +701,6 @@ export default function Game({
             keyHandlers.pressing[k]?.();
         });
 
-        if (localPlayer.mesh != null) {
-            localPlayer.mesh.position.set(localPlayer.body.position.x, localPlayer.body.position.y - 0.2, localPlayer.body.position.z);
-            localPlayer.mesh.quaternion.set(_quaternion.x, _quaternion.y, _quaternion.z, _quaternion.w);
-            localPlayer.mesh.rotateZ((keysAxis.horizontal * 3.14) / 15);
-        }
         if (localPlayer.carBody) {
             localPlayer.carBody.position.set(localPlayer.body.position.x, localPlayer.body.position.y + 0.5, localPlayer.body.position.z);
             localPlayer.carBody.quaternion.copy(_quaternion);
@@ -630,6 +740,7 @@ export default function Game({
 
         // Forground Display
         // cannonDebugger.update();
+        // _helper_roadPosInit();
         _emitLocalPlayerPositions();
         _mixerUpdate();
 
@@ -640,12 +751,14 @@ export default function Game({
         Player.fps = fps;
         Player.clients = clients;
 
+        setPOS(mapCurve.rankPlayers([...Array.from(clients.values()), localPlayer]).get(socket ? socket.id : "") ?? 0);
+
         world.step(fps < 10 ? 1 / 60 : deltaTime);
         renderer.render(scene, camera);
     };
 
-    // renderer.setAnimationLoop(animate);
-    setInterval(() => {
-        animate();
-    }, 1000 / settings.fps);
+    renderer.setAnimationLoop(animate);
+    // setInterval(() => {
+    // animate();
+    // }, 1000 / settings.fps);
 }

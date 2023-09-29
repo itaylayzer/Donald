@@ -16,7 +16,7 @@ export const useSettings = () => {
     return context;
 };
 
-function getGameSettingsFromCookies(){
+function getGameSettingsFromCookies() {
     // Retrieve game settings from document.cookie
     const cookies = document.cookie.split(";");
     let savedSettings = {};
@@ -67,9 +67,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
 const defaultSettings = {
     videoScale: 1,
-    fps:120
+    fps: 120,
 } as Settings;
-
 
 export function saveGameSettingsToCookie(settings: Settings) {
     const settingsJSON = JSON.stringify(settings);

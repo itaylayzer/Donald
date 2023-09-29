@@ -37,13 +37,13 @@ export default function main(finished: (host: string) => void) {
     const cubes = createCube([
         {
             count: 5,
-            mainPosition: [0, 2, 3],
+            mainPosition: [0, 2.3, 80],
             gap: 4,
             mainRotation: [Math.PI / 2, 0, 0],
         },
         {
             count: 5,
-            mainPosition: [0, 2, -20],
+            mainPosition: [0, 2.3, -4],
             gap: 4,
             mainRotation: [Math.PI / 2, 0, 0],
         },
@@ -89,8 +89,7 @@ export default function main(finished: (host: string) => void) {
                     // box availablity
                     EmitAll("ba", { id, av: cubes[id].available });
                     // box random result
-                    const br = 
-                    Random.possibilities({
+                    const br = Random.int(0,6); Random.possibilities({
                         0: 3,
                         1: 1,
                         2: 3,
@@ -133,8 +132,13 @@ export default function main(finished: (host: string) => void) {
             });
 
             // apply effect, mostly for stammped | 3
-            s.on("ae", (args:{p: string, e:number}) => {
+            s.on("ae", (args: { p: string; e: number }) => {
                 EmitAll("ae", args);
+            });
+
+            // rounds
+            s.on("r", (roundsCount: number) => {
+                EmitAll("r", {r:roundsCount, p:s.id});
             });
         }
     );

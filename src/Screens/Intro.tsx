@@ -110,7 +110,6 @@ function App() {
             globalThis.sleepingAnim = sleepingAnim;
             // @ts-ignore
             globalThis.mixer = mixer;
-            
 
             function createLights(c: CustomLight[]) {
                 for (const x of c) {
@@ -163,7 +162,7 @@ function App() {
             const animate = () => {
                 requestAnimationFrame(animate);
                 renderer.render(scene, camera);
-                 // @ts-ignore
+                // @ts-ignore
                 globalThis.mixer.update(0.01);
                 camera.position.lerp(cameraPosition, 0.05);
             };
@@ -185,7 +184,7 @@ function App() {
                 document.body.style.cursor = "";
 
                 // Wake Donald up!
-                 // @ts-ignore
+                // @ts-ignore
                 globalThis.camera = camera;
                 cameraPosition.multiplyScalar(0.7);
                 cameraPosition.add(new THREE.Vector3(-2, 0, 0));
@@ -239,9 +238,14 @@ function App() {
                             <div className="gameUI">
                                 <div className="Menu">
                                     <h3 style={{ fontSize: 60, left: "30%" }}>Lets Play</h3>
-                                    <button style={{ backgroundImage: "url('raceb.png')" }} onClick={()=>{
-                                       document.location.href += 'Kart';
-                                    }}>Donald Kart</button>
+                                    <button
+                                        style={{ backgroundImage: "url('raceb.png')" }}
+                                        onClick={() => {
+                                            document.location.href += "Kart";
+                                        }}
+                                    >
+                                        Donald Kart
+                                    </button>
                                     <button disabled style={{ backgroundImage: "url('party.png')" }}>
                                         Donald Party
                                     </button>
