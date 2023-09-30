@@ -18,7 +18,8 @@ export class Player {
     public item: Item;
     public effect: number;
     public rotation: number;
-    public rounds:number;
+    public rounds: number;
+    public islocal: boolean;
     // localPlayer vari
     public moveable: boolean;
     constructor(id: string, ifLocal?: boolean, emitApplyEffect?: (p: string) => void) {
@@ -32,7 +33,7 @@ export class Player {
             (player.children[0] as THREE.Mesh).material = material;
         }
         const newGroup = new THREE.Group();
-
+        this.islocal = ifLocal === true;
         newGroup.add(player);
         newGroup.add(car);
 
@@ -47,8 +48,8 @@ export class Player {
             collisionFilterGroup: ifLocal ? filters.localCarBody : filters.carBody,
             // isTrigger:true,
             collisionFilterMask: ifLocal
-                ? filters.stopSign | filters.ground | filters.itemBox
-                : filters.ground | filters.itemBox | filters.localPlayerBody,
+                ? filters.stopSign | filters.ground | filters.itemBox | filters.wheel
+                : filters.ground | filters.itemBox | filters.localPlayerBody | filters.wheel,
             mass: ifLocal ? 1 : 0,
             shape: new CANNON.Box(new CANNON.Vec3(0.4, 1, 1)),
         });
@@ -67,13 +68,14 @@ export class Player {
                 if (this.effect !== 2) return;
                 const obj = Object.fromEntries(
                     Array.from(Player.clients.values()).map((v) => {
-                        return [v.body.id.toString(), v.id];
+                        return [v.body.id.toString(), v];
                     })
                 );
                 const x = event.body.id.toString();
                 if (Object.keys(obj).includes(x)) {
                     const player = obj[x];
-                    emitApplyEffect?.(player);
+                    if (player.effect === 0)
+                    emitApplyEffect?.(player.id);
                 }
             });
         } else {
@@ -106,11 +108,12 @@ export class Player {
     }
     public StampedToTheGround(durationInSeconds: number = 2) {
         this.stopAtPlace(durationInSeconds);
-        TWWEENS.deltaTime(1 / Player.fps).playerScale(this, new THREE.Vector3(1, 0, 1), durationInSeconds);
+        TWWEENS.deltaTime(1 / Player.fps).playerScale(this, new THREE.Vector3(1, 0.1, 1), 300);
+
         this.body.collisionFilterMask = filters.ground | filters.itemBox;
         setTimeout(() => {
             TWWEENS.deltaTime(1 / Player.fps).playerScale(this, 1, 300);
-            this.body.collisionFilterMask = filters.ground | filters.itemBox | filters.localPlayerBody;
+            this.body.collisionFilterMask = filters.ground | filters.itemBox | filters.wheel | (this.islocal ? filters.localPlayerBody : 0);
         }, durationInSeconds * 1000);
     }
 }

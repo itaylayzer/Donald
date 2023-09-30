@@ -17,21 +17,28 @@ without those assets the game wasn't exists
 1. Models Credits
     1. [Donald Model](https://sketchfab.com/3d-models/base-mesh-low-poly-character-84cd6685487949bca626bcfc244d) - @YOPN 2e12
     2. [Motorcycle Model](https://sketchfab.com/3d-models/low-poly-motorcycle-4fc3500e04b14e73b942d85bc948c5e9) - @matisosanimation 
-2. Sound Credits
+2. Music Credits
     1. Main Menu - [2022](https://youtu.be/jCia_eCW4ps?si=qh3TvEEyyrB6aM1F) @K.Shiraki
     2. Selection Menu - [Cheerful Girl](https://youtu.be/sPgXN2Ficso?si=Hl7dbmpIitaRj7Xv) @K.Shiraki
 3. Sprites Credits:
     1. [Monkey Icon](https://game-icons.net/1x1/lorc/monkey.html)
     2. [Evolution Icon](https://thenounproject.com/browse/icons/term/evolution/)
     3. [Wheel Icon](https://www.veryicon.com/icons/transport/shopping-mall/wheel-10.html)
+4. Sound Effects:
+    1. [Player Hit Another Player](https://www.youtube.com/watch?v=nXVEjGZFdOQ&ab_channel=MonkeuLover)
+    2. [Item Use](https://www.youtube.com/watch?v=Zdrca7wy8TQ&ab_channel=YourAverageFlushed)
 ## Todo:
 ### Donald Kart:
 1. **Prototype**
     <!-- 1. Three Particle System -->
+    0. ShowFPS - Button [The FPS will be on Top Left]
     1. Item Cube System
-        1. Pictures & Labels [Rocket, Wheel]
-        2. Functunality Per Item [Rocket, Wheel]
-    2. Gamepad
+        1. Pictures & Labels [Wheel, Rocket]
+    2. Winning Presentation!
+    3. Coin System?
+    4. Hub
+    5. Winning Leaderboard
+    6. 4 Races To Grand Final
 
 2. **Product**
     1. Player Models

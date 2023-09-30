@@ -1,8 +1,24 @@
 import { useSettings, saveGameSettingsToCookie } from "./contexts";
 import Slider from "../utils/slider";
+import { useEffect, useState } from "react";
 
 export default function settingComp() {
     const settings = useSettings();
+    const gamepadsArr = useState<Array<null | Gamepad>>(navigator.getGamepads().filter((v) => v !== null));
+    useEffect(() => {
+        const handleGamepadChange = () => {
+            gamepadsArr[1](navigator.getGamepads().filter((v) => v !== null));
+        };
+
+        window.addEventListener("gamepadconnected", handleGamepadChange);
+        window.addEventListener("gamepaddisconnected", handleGamepadChange);
+
+        // Cleanup the event listeners when the component unmounts
+        return () => {
+            window.removeEventListener("gamepadconnected", handleGamepadChange);
+            window.removeEventListener("gamepaddisconnected", handleGamepadChange);
+        };
+    }, []);
     return (
         <>
             {" "}
@@ -33,6 +49,7 @@ export default function settingComp() {
                         settings.updateSettings({
                             videoScale: d / 100,
                             fps: settings.settings.fps,
+                            gamepadIndex: settings.settings.gamepadIndex,
                         });
                     }}
                 />
@@ -50,9 +67,37 @@ export default function settingComp() {
                         settings.updateSettings({
                             videoScale: settings.settings.videoScale,
                             fps: d,
+                            gamepadIndex: settings.settings.gamepadIndex,
                         });
                     }}
                 />
+            </div>
+            <h2>Controls</h2>
+            <div className="slider">
+                <p>selected Gamepad </p>
+                <select
+                    name=""
+                    id=""
+                    defaultValue={settings.settings.gamepadIndex}
+                    onChange={(e) => {
+                        console.log(`change selected to ${parseInt(e.currentTarget.value)}`);
+                        settings.updateSettings({
+                            videoScale: settings.settings.videoScale,
+                            fps: settings.settings.fps,
+                            gamepadIndex: parseInt(e.currentTarget.value),
+                        });
+                    }}
+                >
+                    {gamepadsArr[0].length > 0 ? (
+                        gamepadsArr[0].map((v, index) => (
+                            <option key={"gamepad" + index} value={index}>
+                                {v?.id}
+                            </option>
+                        ))
+                    ) : (
+                        <option> Theres no Gamepad Connected </option>
+                    )}
+                </select>
             </div>
             <button
                 onClick={() => {

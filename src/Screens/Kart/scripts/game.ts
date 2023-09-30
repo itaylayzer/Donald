@@ -88,18 +88,10 @@ export default function Game({
             collisionFilterGroup: options.collisionFilterGroup ?? undefined,
             collisionFilterMask: options.collisionFilterMask ?? undefined,
             material: options.material ?? undefined,
-        }); // Set mass to 0 for a static object.
-        body.addShape(shape);
-        {
-            if (options.position) {
-                body.position = Vector3ToVec3(options.position);
-            }
-            if (options.quaternion) {
-                body.quaternion = QuaternionToQuat(options.quaternion);
-            } else if (options.rotation) {
-                body.quaternion = RotToQuat(options.rotation);
-            }
-        }
+            shape: shape,
+            position: options.position ? Vector3ToVec3(options.position) : undefined,
+            quaternion: options.quaternion ? QuaternionToQuat(options.quaternion) : options.rotation ? RotToQuat(options.rotation) : undefined,
+        });
 
         return body;
     }
@@ -166,7 +158,7 @@ export default function Game({
         var texture = assets.textures["ground"];
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         texture.offset.set(0, 0);
-        texture.repeat.set(5, 5);
+        texture.repeat.set(50, 5);
 
         var material = new THREE.MeshPhongMaterial({
             color: 0xffffff,
@@ -191,7 +183,8 @@ export default function Game({
                     rotation: xmap.rotation,
                     mass: 0,
                     collisionFilterGroup: filters.ground,
-                    collisionFilterMask: filters.ground | filters.carBody | filters.localCarBody | filters.stopSign | filters.localPlayerBody,
+                    collisionFilterMask:
+                        filters.ground | filters.carBody | filters.localCarBody | filters.stopSign | filters.localPlayerBody | filters.wheel,
                     material: groundMaterial,
                 });
                 world.addBody(xmapBody);
@@ -249,17 +242,18 @@ export default function Game({
         // const groundMesh = new THREE.Mesh(new THREE.BoxGeometry(200, 0.4, 200), material);
         // const groundBody = new CANNON.Body({
         //     mass: 0,
-        //     shape: new CANNON.Box(new CANNON.Vec3(100, 0.2, 100)),
+        //     shape: new CANNON.Box(new CANNON.Vec3(100, 1.5, 100)),
         //     position: new CANNON.Vec3(0, 0, 0),
         //     material: groundMaterial,
         //     collisionFilterGroup: filters.ground,
-        //     collisionFilterMask: filters.ground | filters.carBody | filters.localCarBody | filters.stopSign | filters.localPlayerBody,
+        //     collisionFilterMask: filters.stopSign,
         // });
 
         // scene.add(groundMesh);
         // world.addBody(groundBody);
 
         world.addContactMaterial(ground_cm);
+        // world.addContactMaterial(soft_ground_cm);
     }
     function _loadMesh() {
         for (const x of Object.entries(assets.gltf)) {
@@ -358,6 +352,7 @@ export default function Game({
             player: definedFbxs.player,
         };
     }
+    let blur = false;
     function _windowEvents() {
         document.onkeydown = (event) => {
             // @ts-ignore
@@ -369,10 +364,15 @@ export default function Game({
             if (keysDown.has(event.code)) keyHandlers.up[event.code]?.();
             keysDown.delete(event.code);
         };
+
         window.onblur = () => {
+            blur = true;
             for (const x of keysDown) {
                 keysDown.delete(x);
             }
+        };
+        window.onfocus = () => {
+            blur = false;
         };
         window.onresize = () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -536,6 +536,9 @@ export default function Game({
             if (xplayer === undefined) return;
             if (a.v === 4) {
                 TWWEENS.deltaTime(deltaTime).playerScale(xplayer, 3);
+                xplayer.effect = 2;
+                setEFFECT(localPlayer.effect);
+                return;
             }
             if (a.v === 2) {
                 // Create the Stop Sign
@@ -553,6 +556,7 @@ export default function Game({
                     },
                     deltaTime
                 );
+                return;
             }
             if (a.v === 5 && socket.id !== a.p) {
                 // Apply the troll video for 5 seconds!
@@ -570,6 +574,114 @@ export default function Game({
                     videoElement.pause();
                     videoElement.style.opacity = "0";
                 }, 5000);
+                return;
+            }
+            if (a.v === 1) {
+                if (socket.id === a.p) {
+                    // Rocket!
+                    // const mass = localPlayer.body.mass;
+                    // localPlayer.body.mass = 0;
+                    const _filters = localPlayer.body.collisionFilterMask;
+                    localPlayer.body.collisionFilterMask = 0;
+                    localPlayer.moveable = false;
+                    // log("starting");
+                    mapCurve.movePlayerWithRocket(
+                        5,
+                        localPlayer.mesh.position,
+                        35,
+                        (v, r) => {
+                            // log("updating");
+                            localPlayer.body.position.copy(Vector3ToVec3(v.clone().add(new THREE.Vector3(0, 2, 0))));
+                            localPlayer.body.velocity.y = 0;
+                            localPlayer.rotation = lerp(localPlayer.rotation, -r + 90, deltaTime * 5);
+                        },
+                        () => {
+                            // log("finishe");
+                            localPlayer.moveable = true;
+                            localPlayer.body.collisionFilterMask = _filters;
+                            // localPlayer.body.mass = mass;
+                        }
+                    );
+                }
+                xplayer.effect = 4;
+                setEFFECT(localPlayer.effect);
+                return;
+            }
+            if (a.v === 0) {
+                xplayer.effect = 1;
+                setEFFECT(localPlayer.effect);
+            }
+            if (a.v === 3) {
+                // Fire a wheel!
+                const wheel = assets.fbx["wheel"].clone();
+                wheel.scale.multiplyScalar(0.008);
+                scene.add(wheel);
+                const restPlayers = [localPlayer, ...Array.from(clients.values())].filter((v) => v.id !== a.p);
+                mapCurve.moveElectricWheel(
+                    35,
+                    restPlayers,
+                    xplayer.mesh.position,
+                    (p, timeElapsed) => {
+                        // log("found p")
+                        const wheelBody = new CANNON.Body({
+                            mass: 1,
+                            collisionFilterGroup: filters.wheel,
+                            collisionFilterMask: filters.ground | filters.carBody | filters.localCarBody,
+                            position: Vector3ToVec3(wheel.position).vadd(new CANNON.Vec3(0, 1, 0)),
+                            shape: new CANNON.Box(new CANNON.Vec3(0.1, 1, 1)),
+                        });
+
+                        let destroyed = false;
+
+                        wheelBody.addEventListener("collide", (event: { body: CANNON.Body | undefined }) => {
+                            if (event.body === undefined) return;
+                            const obj = Object.fromEntries(restPlayers.map((v) => [v.carBody.id.toString(), v]));
+                            const x = event.body.id.toString();
+                            if (Object.keys(obj).includes(x)) {
+                                const xplayer = obj[x];
+                                xplayer.StampedToTheGround();
+                                // log("TOUCHED!");
+                                destroyed = true;
+                            }
+                        });
+                        // log("added wheel to world")
+                        world.addBody(wheelBody);
+                        const dir = p.mesh.position.clone().sub(wheel.position).normalize().setY(0);
+                        const rot = (Math.atan2(dir.z, dir.x) * 180) / Math.PI;
+                        log(dir);
+                        function wheelMovement() {
+                            dir.setY(0);
+                            // wheelBody.position.vadd(Vector3ToVec3(dir.clone().multiplyScalar(35 * deltaTime)));
+                            // wheel.position.copy(Vec3ToVector3(wheelBody.position).sub(new THREE.Vector3(0,1,0)));
+
+                            wheel.quaternion.slerp(
+                                new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ((-rot + 90) * Math.PI) / 180),
+                                deltaTime * 5
+                            );
+
+                            wheel.position.add(dir.clone().multiplyScalar(deltaTime * 35));
+                            wheelBody.position.copy(Vector3ToVec3(wheel.position).vadd(new CANNON.Vec3(0, 1, 0)));
+                            timeElapsed += deltaTime * 1000;
+                            if (wheelBody.position.y > -20 && !destroyed && timeElapsed < 5 * 1000) {
+                                requestAnimationFrame(wheelMovement);
+                            } else {
+                                // log("REMVOED")
+                                world.removeBody(wheelBody);
+                                scene.remove(wheel);
+                            }
+                        }
+
+                        wheelMovement();
+                    },
+                    () => {
+                        // log("removal");
+                        scene.remove(wheel);
+                    },
+                    (v, r) => {
+                        wheel.position.copy(v.clone().add(new THREE.Vector3(0, 1, 0)));
+                        wheel.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ((-r + 90) * Math.PI) / 180);
+                    }
+                );
             }
         });
         socket.on("se", (a: { p: string; v: number }) => {
@@ -582,6 +694,10 @@ export default function Game({
 
             if (xplayer.id === socket.id) {
                 setEFFECT(localPlayer.effect);
+            } else {
+                if (a.v === 1) {
+                    // Display Rocket!
+                }
             }
         });
         socket.on("ae", (a: { p: string; e: number }) => {
@@ -628,6 +744,40 @@ export default function Game({
             horizontal: keysDown.has("KeyD") && keysDown.has("KeyA") ? 0 : keysDown.has("KeyD") ? 1 : keysDown.has("KeyA") ? -1 : 0,
             vertical: keysDown.has("KeyW") && keysDown.has("KeyS") ? 0 : keysDown.has("KeyW") ? 1 : keysDown.has("KeyS") ? -1 : 0,
         };
+
+        {
+            const gamepads = navigator.getGamepads();
+            if (gamepads && !blur) {
+                const gamepad = gamepads[settings.gamepadIndex];
+                if (gamepad) {
+                    // Map gamepad buttons to your existing input system
+                    const buttonA = gamepad.buttons[0]; // Button A
+                    const buttonB = gamepad.buttons[1]; // Button B
+                    const buttonX = gamepad.buttons[2];
+                    const buttonY = gamepad.buttons[3];
+
+                    // Map gamepad axes to your existing input system
+                    const horizontalAxis = gamepad.axes[0]; // Left analog stick horizontal axis
+                    const rightTrigger = gamepad.buttons[7].value; // R2 - ZR
+                    const leftTrigger = gamepad.buttons[6].value; // L2 - ZL
+
+                    const npadRight = gamepad.buttons[15];
+                    const npadLeft = gamepad.buttons[14];
+
+                    keysAxisRaw.vertical =
+                        rightTrigger && leftTrigger ? 0 : rightTrigger ? rightTrigger : leftTrigger ? -leftTrigger : keysAxisRaw.vertical;
+                    keysAxisRaw.vertical = buttonA.pressed && buttonB.pressed ? 0 : buttonA.pressed ? 1 : buttonB.pressed ? -1 : keysAxisRaw.vertical;
+
+                    keysAxisRaw.horizontal = Math.abs(horizontalAxis) > 0.01 ? horizontalAxis : keysAxisRaw.horizontal;
+                    keysAxisRaw.horizontal =
+                        npadLeft.pressed && npadRight.pressed ? 0 : npadRight.pressed ? 1 : npadLeft.pressed ? -1 : keysAxisRaw.horizontal;
+
+                    if (buttonX.pressed || buttonY.pressed) {
+                        _UseItem();
+                    }
+                }
+            }
+        }
         const x = keysAxisRaw;
         for (const key in Object.keys(keysAxis)) {
             const k = Object.keys(keysAxis)[key] as "horizontal" | "vertical";
@@ -673,6 +823,11 @@ export default function Game({
             localPlayer.mesh.quaternion.set(_quaternion.x, _quaternion.y, _quaternion.z, _quaternion.w);
             localPlayer.mesh.rotateZ((keysAxis.horizontal * 3.14) / 15);
         }
+        if (localPlayer.carBody) {
+            localPlayer.carBody.position.set(localPlayer.body.position.x, localPlayer.body.position.y + 0.5, localPlayer.body.position.z);
+            localPlayer.carBody.quaternion.copy(_quaternion);
+            localPlayer.carBody.velocity.scale(0);
+        }
         setVEL((localPlayer.body.velocity.length() * 100) / 15);
         if (!localPlayer.moveable) return;
         if (localPlayer.body.position.y < -20) {
@@ -700,26 +855,12 @@ export default function Game({
             // @ts-ignore
             keyHandlers.pressing[k]?.();
         });
-
-        if (localPlayer.carBody) {
-            localPlayer.carBody.position.set(localPlayer.body.position.x, localPlayer.body.position.y + 0.5, localPlayer.body.position.z);
-            localPlayer.carBody.quaternion.copy(_quaternion);
-            localPlayer.carBody.velocity.scale(0);
-        }
     }
     function _UseItem() {
         const itemID = localPlayer.item;
         setITEM(false);
         localPlayer.item = false;
-        switch (itemID) {
-            case 0:
-                localPlayer.effect = 1;
-                break;
-            case 4:
-                localPlayer.effect = 2;
-                break;
-        }
-        setEFFECT(localPlayer.effect);
+
         socket?.emit("ui", itemID);
     }
     function _emitLocalPlayerPositions() {
@@ -739,7 +880,7 @@ export default function Game({
         _localPlayerMovement(fps);
 
         // Forground Display
-        // cannonDebugger.update();
+        cannonDebugger.update();
         // _helper_roadPosInit();
         _emitLocalPlayerPositions();
         _mixerUpdate();
@@ -750,6 +891,7 @@ export default function Game({
         ItemCube.fps = fps;
         Player.fps = fps;
         Player.clients = clients;
+        MapCurve.deltaTime = deltaTime;
 
         setPOS(mapCurve.rankPlayers([...Array.from(clients.values()), localPlayer]).get(socket ? socket.id : "") ?? 0);
 

@@ -103,20 +103,20 @@ export const TWWEENS = {
                     t += deltaTime * 1000;
                 }, deltaTime * 1000);
             },
-            stopSign: (ss: StopSign, fun: () => void) => {
+            sign: (ss: StopSign, num: number, fun?: () => void) => {
                 const startScale = ss.mesh.scale.clone();
-                const endScale = new THREE.Vector3(0, 0, 0);
+                const endScale = new THREE.Vector3(num, num, num);
 
                 let interval: number;
                 const tween2 = new tweenModule.Tween(startScale)
                     .to(endScale, 500)
-                    .easing(Easing.Back.In)
+                    .easing(fun ? Easing.Back.In : Easing.Back.Out)
                     .onUpdate((x) => {
                         ss.mesh.scale.copy(x);
                     })
                     .onComplete(() => {
                         clearInterval(interval);
-                        fun();
+                        fun?.();
                     })
                     .start(0);
                 let t = 0;
@@ -125,7 +125,7 @@ export const TWWEENS = {
                     t += deltaTime * 1000;
                 }, deltaTime * 1000);
             },
-            playerPosition:(p:Player,duration:number, pos:THREE.Vector3)=>{
+            playerPosition: (p: Player, duration: number, pos: THREE.Vector3) => {
                 p.moveable = false;
                 const mass = p.body.mass;
                 p.body.mass = 0;
@@ -136,28 +136,24 @@ export const TWWEENS = {
                 p.body.velocity.setZero();
                 const endPos = Vector3ToVec3(pos);
                 const startPos = p.body.position.clone();
-                
 
                 let interval: number;
                 const tween2 = new tweenModule.Tween(startPos)
                     .to(endPos, duration)
                     .easing(Easing.Quadratic.Out)
                     .onUpdate((x) => {
-                        p.body.velocity.copy(
-                            p.body.position.clone().vadd(x.clone().scale(-1 * deltaTime))
-                        );
+                        p.body.velocity.copy(p.body.position.clone().vadd(x.clone().scale(-1 * deltaTime)));
                         p.body.position.copy(x);
                     })
                     .onComplete(() => {
                         clearInterval(interval);
                         p.body.position.copy(endPos);
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             p.body.mass = mass;
                             p.body.collisionFilterMask = filters;
                             p.body.type = type;
                             p.moveable = true;
-                        },1000)
-                        
+                        }, 1000);
                     })
                     .start(0);
                 let t = 0;
@@ -165,8 +161,7 @@ export const TWWEENS = {
                     tween2.update(t);
                     t += deltaTime * 1000;
                 }, deltaTime * 1000);
-
-            }
+            },
         };
     },
 };

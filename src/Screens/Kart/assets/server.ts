@@ -89,7 +89,8 @@ export default function main(finished: (host: string) => void) {
                     // box availablity
                     EmitAll("ba", { id, av: cubes[id].available });
                     // box random result
-                    const br = Random.int(0,6); Random.possibilities({
+                    const br = Random.int(0, 6);
+                    Random.possibilities({
                         0: 3,
                         1: 1,
                         2: 3,
@@ -118,6 +119,7 @@ export default function main(finished: (host: string) => void) {
                 let seconds = 0;
                 switch (itemCode) {
                     case 0:
+                    case 1:
                     case 4:
                         seconds = 5;
                         break;
@@ -138,7 +140,7 @@ export default function main(finished: (host: string) => void) {
 
             // rounds
             s.on("r", (roundsCount: number) => {
-                EmitAll("r", {r:roundsCount, p:s.id});
+                EmitAll("r", { r: roundsCount, p: s.id });
             });
         }
     );

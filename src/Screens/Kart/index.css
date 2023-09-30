@@ -47,6 +47,11 @@ div.menu.slider main div.slider p {
   text-align: left;
 
 }
+div.menu.slider main div.slider select{
+  color:white;
+  background-color: rgb(20, 20, 20, 50%);
+  
+}
 
 div.menu.slider main div.slider div.slider[data-component] {
   translate: 0px 15px;

@@ -212,7 +212,7 @@ function App({ socket, meshes, exit }: { socket: Socket | null; meshes: loadedAs
             newa += "     ";
         }
         console.log(...what);
-        SetConsoles((old) => [...old, newa]);
+        SetConsoles((old) => [newa, ...old]);
     }
 
     useEffect(() => {
@@ -226,8 +226,8 @@ function App({ socket, meshes, exit }: { socket: Socket | null; meshes: loadedAs
                     setVEL: SetVelocityMeter,
                     setITEM: SetItem,
                     setEFFECT: setEff,
-                    setROUNDS:setRounds,
-                    setPOS:SetPos,
+                    setROUNDS: setRounds,
+                    setPOS: SetPos,
                     settings: settingsContext.settings,
                 });
             } else {
@@ -247,7 +247,9 @@ function App({ socket, meshes, exit }: { socket: Socket | null; meshes: loadedAs
 
             <div className="gameUI" id="kart">
                 <video id="troll" src="videos/troll.mp4"></video>
-                <div className="right-bottom">{playerPos}rd {playerRounds}/3 rounds</div>
+                <div className="right-bottom">
+                    {playerPos}rd {playerRounds}/3 rounds
+                </div>
                 <div className="left-bottom">{velocityMeter.toFixed(2)} CC</div>
                 <div className="center-top">{fps.toFixed(0)} FPS</div>
                 <div className="right-top">

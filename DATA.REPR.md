@@ -18,3 +18,4 @@ a global language that the game system will speak trough
 - 1 : Star
 - 2 : Biggie
 - 3 : Stammped
+- 4 : Rocket
