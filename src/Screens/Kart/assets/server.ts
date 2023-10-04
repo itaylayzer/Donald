@@ -74,7 +74,7 @@ export default function main(finished: (host: string) => void) {
                 clients.set(s.id, s);
             });
             // movements
-            s.on("m", (args: { pos: [number, number, number]; rot: number }) => {
+            s.on("m", (args: { pos: [number, number, number]; rot: number; side: number }) => {
                 EmitExcept(s.id, "m", { ...args, id: s.id });
             });
             // disconnect
@@ -136,6 +136,12 @@ export default function main(finished: (host: string) => void) {
             // apply effect, mostly for stammped | 3
             s.on("ae", (args: { p: string; e: number }) => {
                 EmitAll("ae", args);
+            });
+            // apply velocity
+            s.on("av", (args: { p: string; v: [number, number, number] }) => {
+                const xplayer = clients.get(args.p);
+                if (xplayer === undefined) return;
+                xplayer.emit("av", args.v);
             });
 
             // rounds

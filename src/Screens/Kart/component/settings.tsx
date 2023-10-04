@@ -48,16 +48,18 @@ export default function settingComp() {
                     onValue={(d) => {
                         settings.updateSettings({
                             videoScale: d / 100,
-                            fps: settings.settings.fps,
+                            fpsCap: settings.settings.fpsCap,
                             gamepadIndex: settings.settings.gamepadIndex,
+                            showFps:settings.settings.showFps
                         });
                     }}
                 />
             </div>
+            
             <div className="slider">
                 <p>max FPS </p>
                 <Slider
-                    defualtValue={settings.settings.fps}
+                    defualtValue={settings.settings.fpsCap}
                     fixed={0}
                     max={240}
                     min={30}
@@ -66,8 +68,25 @@ export default function settingComp() {
                     onValue={(d) => {
                         settings.updateSettings({
                             videoScale: settings.settings.videoScale,
-                            fps: d,
+                            fpsCap: d,
                             gamepadIndex: settings.settings.gamepadIndex,
+                            showFps:settings.settings.showFps
+                        });
+                    }}
+                />
+            </div>
+            <div className="slider">
+                <p>show FPS </p>
+                <input
+                type="checkbox"
+                    defaultChecked={settings.settings.showFps}
+                    onChange={(e) => {
+                        console.log(e.currentTarget.checked);
+                        settings.updateSettings({
+                            videoScale: settings.settings.videoScale,
+                            fpsCap: settings.settings.fpsCap,
+                            gamepadIndex: settings.settings.gamepadIndex,
+                            showFps:e.currentTarget.checked
                         });
                     }}
                 />
@@ -83,8 +102,9 @@ export default function settingComp() {
                         console.log(`change selected to ${parseInt(e.currentTarget.value)}`);
                         settings.updateSettings({
                             videoScale: settings.settings.videoScale,
-                            fps: settings.settings.fps,
+                            fpsCap: settings.settings.fpsCap,
                             gamepadIndex: parseInt(e.currentTarget.value),
+                            showFps:settings.settings.showFps
                         });
                     }}
                 >

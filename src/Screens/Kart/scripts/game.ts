@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
 import { Socket } from "../assets/socket.io";
-import { QuaternionToQuat, RotToQuat, TWWEENS, Vec3ToVector3, Vector3ToVec3 } from "../assets/functions";
+import { QuatToQuaternion, QuaternionToQuat, RotToQuat, TWWEENS, Vec3ToVector3, Vector3ToVec3 } from "../assets/functions";
 import CannonDebugger from "../utils/cannonDebugRenderer";
 import { lerp } from "three/src/math/MathUtils.js";
 import { Player } from "../classess/player";
@@ -9,13 +9,13 @@ import { CustomLight, IBoxList, Item, Settings, loadedAssets } from "../assets/t
 import { filtersDefenitions as filters } from "../assets/inputs";
 import { ItemCube } from "../classess/itemCube";
 import StopSign from "../classess/stopSign";
-import { groundMaterial, ground_cm } from "../assets/materials";
+import { car_cm, groundMaterial, ground_cm, player_ground_cm } from "../assets/materials";
 import curveJSON from "../assets/curveJSON.json";
 import { MapCurve } from "../classess/mapCurve";
+import { PlayerMovement } from "../classess/movement";
 
 export default function Game({
     socket,
-    // @ts-ignore
     log,
     assets,
     setFPS,
@@ -24,6 +24,7 @@ export default function Game({
     setEFFECT,
     setROUNDS,
     setPOS,
+    DISPLAY,
     settings,
 }: {
     socket: Socket | null;
@@ -35,13 +36,17 @@ export default function Game({
     setEFFECT: React.Dispatch<number>;
     setROUNDS: React.Dispatch<number>;
     setPOS: React.Dispatch<number>;
+    DISPLAY: {
+        SET: (...x: any[]) => void;
+        CLEAR: () => void;
+    };
     settings: Settings;
 }) {
     let deltaTime = 0,
         fps = 0;
     console.log(`recieved Settings `, settings);
 
-    const mapCurve = new MapCurve(curveJSON.points);
+    const mapCurve = new MapCurve(curveJSON.points, 80);
 
     const container = document.querySelector("div.gameContainer") as HTMLDivElement;
     container.style.scale = `${1 / settings.videoScale}`;
@@ -53,11 +58,11 @@ export default function Game({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(0, 0, 0); // Adjust the position as needed
-    camera.lookAt(0, 0, 0); // Make the camera look at the center (0, 0, 0)
-    const spherical = new THREE.Spherical(6, Math.PI, 0); // Initial spherical coordinates (radius, polar angle, azimuthal angle)
+    camera.position.set(0, 0, 0);
+    camera.lookAt(0, 0, 0);
+    const spherical = new THREE.Spherical(6, Math.PI, 0);
     scene.background = new THREE.Color("white");
-    // scene.fog = new THREE.Fog("white", 20, 100);
+    scene.fog = new THREE.Fog("white", 20, 100);
 
     const world = new CANNON.World({
         gravity: new CANNON.Vec3(0, -50, 0),
@@ -75,14 +80,11 @@ export default function Game({
             material?: CANNON.Material;
         }
     ) {
-        // Convert Three.js geometry to CANNON.js format.
         const vertices = Array.from(new Float32Array(geometry.attributes.position.array).values());
-        // const normals = Array.from(new Float32Array(geometry.attributes.normal.array).values());
         const faces = (geometry.index ? new Uint16Array(geometry.index.array) : []) as number[];
         console.log(faces);
         const shape = new CANNON.Trimesh(vertices, faces);
 
-        // Create a CANNON body for the mesh.
         const body = new CANNON.Body({
             mass: options.mass ?? 0,
             collisionFilterGroup: options.collisionFilterGroup ?? undefined,
@@ -141,14 +143,20 @@ export default function Game({
             },
         },
         down: {
-            // KeyF:()=>{
-            //     const pos = new MapCurve(curveJSON.points).getNearestPoint(Vec3ToVector3(localPlayer.body.position));
-            //     localPlayer.body.position.copy(Vector3ToVec3(pos).vadd(new CANNON.Vec3(0,10,0)));
-            // }
-
             KeyV: () => {
                 worldMeshes = mapCurve.meshes();
                 scene.add(...worldMeshes);
+            },
+            KeyP: () => {
+                const p = mapCurve.get(70);
+                localPlayer.position = 70;
+                localPlayer.body.position.copy(Vector3ToVec3(p.clone().add(new THREE.Vector3(0, 3, 0))));
+            },
+            KeyR: () => {
+                localPlayer.spinAtPlace();
+            },
+            KeyO: () => {
+                localPlayer.body.applyImpulse(new CANNON.Vec3(1000, 0, 0));
             },
         },
     };
@@ -158,6 +166,7 @@ export default function Game({
         var texture = assets.textures["ground"];
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         texture.offset.set(0, 0);
+        // texture.repeat.set(200, 200);
         texture.repeat.set(50, 5);
 
         var material = new THREE.MeshPhongMaterial({
@@ -192,8 +201,6 @@ export default function Game({
         }
 
         {
-            // create winning mesh and winning collider
-
             const winningMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(20, 10, 1),
                 new THREE.MeshStandardMaterial({
@@ -202,7 +209,7 @@ export default function Game({
                     color: "green",
                 })
             );
-            winningMesh.position.copy(mapCurve.get(80)).add(new THREE.Vector3(0, 5, 0));
+            winningMesh.position.copy(mapCurve.get(mapCurve.winningIndex)).add(new THREE.Vector3(0, 5, 0));
 
             const winningBody = new CANNON.Body({
                 isTrigger: true,
@@ -215,23 +222,27 @@ export default function Game({
 
             winningBody.addEventListener("collide", (event: { body: CANNON.Body | undefined }) => {
                 if (event.body === undefined) return;
-                // First Condition: The plyaer is local PLayer
-                // Second Condition: Rotation supposed to be 90<x<270
-                // FIXME: Third Condition: Winning Not working for backwards
-                // LATER: Needs to check if the player is moving away from the winning body,
-                // unless worn him of cheating.
-                const rotation = localPlayer.rotation % 360;
-                if (event.body.id === localPlayer.carBody.id && rotation > 90 && rotation < 270) {
-                    winningBody.collisionFilterMask = 0;
-                    // DONT KNOW WHY THE EVENT REPEATING 4 TIMES!
+
+                // FIXME:
+                let rotation = localPlayer.rotation % 360;
+                if (rotation < 0) rotation += 360;
+                if (
+                    localPlayer.roundable &&
+                    event.body.id === localPlayer.carBody.id &&
+                    rotation > 90 &&
+                    rotation < 270 &&
+                    localPlayer.position === mapCurve.winningIndex
+                ) {
                     if (localPlayer.rounds % 1 == 0) {
+                        localPlayer.roundable = false;
                         localPlayer.rounds += 0.5;
                         socket?.emit("r", Math.ceil(localPlayer.rounds));
                         winningMesh.material.opacity = 0;
+                        winningBody.collisionFilterMask = 0;
                         setTimeout(() => {
                             winningBody.collisionFilterMask = filters.localCarBody;
                             winningMesh.material.opacity = 0.4;
-                        }, 2 * 1000);
+                        }, 3 * 1000);
                     }
                 }
             });
@@ -246,13 +257,15 @@ export default function Game({
         //     position: new CANNON.Vec3(0, 0, 0),
         //     material: groundMaterial,
         //     collisionFilterGroup: filters.ground,
-        //     collisionFilterMask: filters.stopSign,
+        //     collisionFilterMask: filters.ground | filters.carBody | filters.localCarBody | filters.stopSign | filters.localPlayerBody | filters.wheel,
         // });
 
         // scene.add(groundMesh);
         // world.addBody(groundBody);
 
         world.addContactMaterial(ground_cm);
+        world.addContactMaterial(player_ground_cm);
+        world.addContactMaterial(car_cm);
         // world.addContactMaterial(soft_ground_cm);
     }
     function _loadMesh() {
@@ -378,6 +391,10 @@ export default function Game({
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
 
+            container.style.scale = `${1 / settings.videoScale}`;
+            container.style.width = `${window.innerWidth * settings.videoScale}px`;
+            container.style.height = `${window.innerHeight * settings.videoScale}px`;
+
             renderer.setSize(window.innerWidth, window.innerHeight);
         };
     }
@@ -433,13 +450,17 @@ export default function Game({
     _windowEvents();
     _createLights();
 
-    const localPlayer = new Player(socket !== null ? socket.id : "", true, (s) => {
-        socket?.emit("ae", { p: s, e: 3 });
+    const localPlayer = new Player(socket !== null ? socket.id : "", true, {
+        effect: (s) => {
+            socket?.emit("ae", { p: s, e: 3 });
+        },
     });
     {
+        localPlayer.position = mapCurve.findClosestPointIndex(localPlayer.mesh.position);
         const sittingPose = localPlayer.mixer.clipAction(definedFbxs.sitting.animations[0]);
         sittingPose.play();
     }
+    const playerMovement = new PlayerMovement(localPlayer, camera, log);
 
     function _socketInitiates() {
         if (socket === null) return;
@@ -500,22 +521,25 @@ export default function Game({
 
             clients.set(x, xplayer);
         });
-        socket.on("m", (args: { pos: [number, number, number]; rot: number; side: number; id: string }) => {
+        socket.on("m", (args: { pos: [number, number, number]; rot: number; side: number; vel: [number, number, number]; id: string }) => {
             const xplayer = clients.get(args.id);
             if (xplayer === undefined) return;
             xplayer.body.position.set(args.pos[0], args.pos[1], args.pos[2]);
             xplayer.mesh.position.set(args.pos[0], args.pos[1] - 0.2, args.pos[2]);
             const _quaternion = new CANNON.Quaternion();
-            _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (args.rot * Math.PI) / 180);
-            xplayer.mesh.quaternion.set(_quaternion.x, _quaternion.y, _quaternion.z, _quaternion.w);
-            xplayer.body.type === CANNON.BODY_TYPES.STATIC;
-            xplayer.body.mass = 1;
+            _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), args.rot * THREE.MathUtils.DEG2RAD);
+            xplayer.mesh.quaternion.copy(QuatToQuaternion(_quaternion));
+            xplayer.body.mass = 10;
             xplayer.mesh.rotateZ((args.side * 3.14) / 15);
             xplayer.rotation = args.rot;
+            xplayer.body.velocity.set(args.vel[0], 0, args.vel[2]);
+
             if (xplayer.carBody) {
-                xplayer.carBody.position.set(args.pos[0], args.pos[1] + 0.5, args.pos[2]);
+                xplayer.carBody.position.set(args.pos[0], args.pos[1], args.pos[2]);
                 xplayer.carBody.quaternion.copy(_quaternion);
-                xplayer.carBody.velocity.scale(0);
+                xplayer.carBody.angularDamping = 1;
+                xplayer.carBody.initAngularVelocity.scale(0, xplayer.carBody.initAngularVelocity);
+                xplayer.carBody.angularVelocity.scale(0, xplayer.carBody.angularVelocity);
             }
         });
         socket.on("p-dis", (id: string) => {
@@ -541,7 +565,6 @@ export default function Game({
                 return;
             }
             if (a.v === 2) {
-                // Create the Stop Sign
                 new StopSign(
                     xplayer,
                     localPlayer,
@@ -559,7 +582,6 @@ export default function Game({
                 return;
             }
             if (a.v === 5 && socket.id !== a.p) {
-                // Apply the troll video for 5 seconds!
                 const queryElement = document.querySelector("div.gameUI#kart video#troll");
                 if (queryElement == null) return;
                 const videoElement = queryElement as HTMLVideoElement;
@@ -578,28 +600,21 @@ export default function Game({
             }
             if (a.v === 1) {
                 if (socket.id === a.p) {
-                    // Rocket!
-                    // const mass = localPlayer.body.mass;
-                    // localPlayer.body.mass = 0;
                     const _filters = localPlayer.body.collisionFilterMask;
                     localPlayer.body.collisionFilterMask = 0;
                     localPlayer.moveable = false;
-                    // log("starting");
                     mapCurve.movePlayerWithRocket(
                         5,
                         localPlayer.mesh.position,
                         35,
                         (v, r) => {
-                            // log("updating");
                             localPlayer.body.position.copy(Vector3ToVec3(v.clone().add(new THREE.Vector3(0, 2, 0))));
                             localPlayer.body.velocity.y = 0;
                             localPlayer.rotation = lerp(localPlayer.rotation, -r + 90, deltaTime * 5);
                         },
                         () => {
-                            // log("finishe");
                             localPlayer.moveable = true;
                             localPlayer.body.collisionFilterMask = _filters;
-                            // localPlayer.body.mass = mass;
                         }
                     );
                 }
@@ -612,7 +627,6 @@ export default function Game({
                 setEFFECT(localPlayer.effect);
             }
             if (a.v === 3) {
-                // Fire a wheel!
                 const wheel = assets.fbx["wheel"].clone();
                 wheel.scale.multiplyScalar(0.008);
                 scene.add(wheel);
@@ -622,7 +636,6 @@ export default function Game({
                     restPlayers,
                     xplayer.mesh.position,
                     (p, timeElapsed) => {
-                        // log("found p")
                         const wheelBody = new CANNON.Body({
                             mass: 1,
                             collisionFilterGroup: filters.wheel,
@@ -639,23 +652,18 @@ export default function Game({
                             const x = event.body.id.toString();
                             if (Object.keys(obj).includes(x)) {
                                 const xplayer = obj[x];
-                                xplayer.StampedToTheGround();
-                                // log("TOUCHED!");
+                                xplayer.spinAtPlace();
                                 destroyed = true;
                             }
                         });
-                        // log("added wheel to world")
                         world.addBody(wheelBody);
                         const dir = p.mesh.position.clone().sub(wheel.position).normalize().setY(0);
-                        const rot = (Math.atan2(dir.z, dir.x) * 180) / Math.PI;
+                        const rot = Math.atan2(dir.z, dir.x) * THREE.MathUtils.RAD2DEG;
                         log(dir);
                         function wheelMovement() {
                             dir.setY(0);
-                            // wheelBody.position.vadd(Vector3ToVec3(dir.clone().multiplyScalar(35 * deltaTime)));
-                            // wheel.position.copy(Vec3ToVector3(wheelBody.position).sub(new THREE.Vector3(0,1,0)));
-
                             wheel.quaternion.slerp(
-                                new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ((-rot + 90) * Math.PI) / 180),
+                                new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (-rot + 90) * THREE.MathUtils.DEG2RAD),
                                 deltaTime * 5
                             );
 
@@ -665,7 +673,6 @@ export default function Game({
                             if (wheelBody.position.y > -20 && !destroyed && timeElapsed < 5 * 1000) {
                                 requestAnimationFrame(wheelMovement);
                             } else {
-                                // log("REMVOED")
                                 world.removeBody(wheelBody);
                                 scene.remove(wheel);
                             }
@@ -674,12 +681,11 @@ export default function Game({
                         wheelMovement();
                     },
                     () => {
-                        // log("removal");
                         scene.remove(wheel);
                     },
                     (v, r) => {
                         wheel.position.copy(v.clone().add(new THREE.Vector3(0, 1, 0)));
-                        wheel.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ((-r + 90) * Math.PI) / 180);
+                        wheel.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), (-r + 90) * THREE.MathUtils.DEG2RAD);
                     }
                 );
             }
@@ -703,7 +709,7 @@ export default function Game({
         socket.on("ae", (a: { p: string; e: number }) => {
             const xplayer = a.p === socket.id ? localPlayer : clients.get(a.p);
             if (xplayer === undefined) return;
-            xplayer.StampedToTheGround(2);
+            xplayer.stampedToTheGround(2);
         });
         socket.on("r", (args: { r: number; p: string }) => {
             const xplayer = args.p === socket.id ? localPlayer : clients.get(args.p);
@@ -716,17 +722,13 @@ export default function Game({
                 //TODO: he won!
             }
         });
+        socket.on("av", (args: [number, number, number]) => {
+            log("recieved av");
+            playerMovement.applyForces(new CANNON.Vec3(args[0], args[1], args[2]).scale(1));
+        });
         socket.emit("i");
     }
 
-    // const redBox = new THREE.Mesh(new THREE.BoxGeometry(1,1,1),undefined);
-    // scene.add(redBox);
-
-    // function _helper_roadPosInit(){
-    //     // const pos = mapCurve.getNearestPoint(Vec3ToVector3(localPlayer.body.position)).add(new THREE.Vector3(0,1,0));
-    //     // redBox.position.copy(pos);
-
-    // }
     _socketInitiates();
 
     // @ts-ignore
@@ -736,14 +738,17 @@ export default function Game({
         horizontal: 0,
         vertical: 0,
     };
+    const keysAxisRaw: {
+        horizontal: number;
+        vertical: number;
+    } = { horizontal: 0, vertical: 0 };
+
     const cameraTarget = new THREE.Vector3(0, 0, 0);
     const clock = new THREE.Clock();
 
     function _keyAxisHandle(deltaTime: number) {
-        const keysAxisRaw = {
-            horizontal: keysDown.has("KeyD") && keysDown.has("KeyA") ? 0 : keysDown.has("KeyD") ? 1 : keysDown.has("KeyA") ? -1 : 0,
-            vertical: keysDown.has("KeyW") && keysDown.has("KeyS") ? 0 : keysDown.has("KeyW") ? 1 : keysDown.has("KeyS") ? -1 : 0,
-        };
+        keysAxisRaw.horizontal = keysDown.has("KeyD") && keysDown.has("KeyA") ? 0 : keysDown.has("KeyD") ? 1 : keysDown.has("KeyA") ? -1 : 0;
+        keysAxisRaw.vertical = keysDown.has("KeyW") && keysDown.has("KeyS") ? 0 : keysDown.has("KeyW") ? 1 : keysDown.has("KeyS") ? -1 : 0;
 
         {
             const gamepads = navigator.getGamepads();
@@ -758,6 +763,7 @@ export default function Game({
 
                     // Map gamepad axes to your existing input system
                     const horizontalAxis = gamepad.axes[0]; // Left analog stick horizontal axis
+                    const verticalAxis = gamepad.axes[3]; // Right analog stick vertical axis
                     const rightTrigger = gamepad.buttons[7].value; // R2 - ZR
                     const leftTrigger = gamepad.buttons[6].value; // L2 - ZL
 
@@ -767,8 +773,8 @@ export default function Game({
                     keysAxisRaw.vertical =
                         rightTrigger && leftTrigger ? 0 : rightTrigger ? rightTrigger : leftTrigger ? -leftTrigger : keysAxisRaw.vertical;
                     keysAxisRaw.vertical = buttonA.pressed && buttonB.pressed ? 0 : buttonA.pressed ? 1 : buttonB.pressed ? -1 : keysAxisRaw.vertical;
-
-                    keysAxisRaw.horizontal = Math.abs(horizontalAxis) > 0.01 ? horizontalAxis : keysAxisRaw.horizontal;
+                    keysAxisRaw.vertical = Math.abs(verticalAxis) > 0.05 ? -verticalAxis : keysAxisRaw.vertical;
+                    keysAxisRaw.horizontal = Math.abs(horizontalAxis) > 0.05 ? horizontalAxis : keysAxisRaw.horizontal;
                     keysAxisRaw.horizontal =
                         npadLeft.pressed && npadRight.pressed ? 0 : npadRight.pressed ? 1 : npadLeft.pressed ? -1 : keysAxisRaw.horizontal;
 
@@ -806,9 +812,11 @@ export default function Game({
         cameraTarget.y = lerp(cameraTarget.y, localPlayer.body.position.y + 2 * +(localPlayer.effect === 2), 12 / fps);
         cameraTarget.z = lerp(cameraTarget.z, localPlayer.body.position.z, 8 / fps);
 
-        const thetha = (localPlayer.rotation * Math.PI) / 180 + keysAxis.horizontal * 0.2 * keysAxis.vertical;
-        spherical.phi = (Math.PI * (0.6 + keysAxis.vertical / 20)) / 2;
-        spherical.theta = thetha + Math.PI;
+        if (!localPlayer.spinning) {
+            const thetha = localPlayer.rotation * THREE.MathUtils.DEG2RAD + keysAxis.horizontal * 0.2 * keysAxis.vertical;
+            spherical.phi = (Math.PI * (0.6 + keysAxis.vertical / 20)) / 2;
+            spherical.theta = thetha + Math.PI;
+        }
 
         camera.position.setFromSpherical(spherical).add(cameraTarget);
         camera.lookAt(cameraTarget);
@@ -816,7 +824,7 @@ export default function Game({
         camera.rotateZ(keysAxis.horizontal / 20);
 
         const _quaternion = new CANNON.Quaternion();
-        _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (localPlayer.rotation * Math.PI) / 180);
+        _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), localPlayer.rotation * THREE.MathUtils.DEG2RAD);
 
         if (localPlayer.mesh != null) {
             localPlayer.mesh.position.set(localPlayer.body.position.x, localPlayer.body.position.y - 0.2, localPlayer.body.position.z);
@@ -828,7 +836,9 @@ export default function Game({
             localPlayer.carBody.quaternion.copy(_quaternion);
             localPlayer.carBody.velocity.scale(0);
         }
-        setVEL((localPlayer.body.velocity.length() * 100) / 15);
+
+        localPlayer.setPos(mapCurve.findClosestPointIndex(localPlayer.mesh.position), mapCurve.points.length - 1);
+        setVEL(localPlayer.body.velocity.length());
         if (!localPlayer.moveable) return;
         if (localPlayer.body.position.y < -20) {
             TWWEENS.deltaTime(deltaTime).playerPosition(
@@ -837,19 +847,8 @@ export default function Game({
                 mapCurve.getNearestPoint(Vec3ToVector3(localPlayer.body.position)).add(new THREE.Vector3(0, 10, 0))
             );
         }
-        localPlayer.rotation -= keysAxis.horizontal * 2 * keysAxis.vertical * (60 / fps);
-        const forwardVector = new CANNON.Vec3(0, 0, 1);
-        const carForward = _quaternion.vmult(forwardVector);
-        const carVelocity = carForward.scale(
-            // 150CC = 20
-            // 100CC = 15
-            // 50CC = 5
-            (Math.abs(keysAxis.vertical) * 15 - Math.abs(keysAxis.horizontal * keysAxis.vertical) * 1.5) *
-                (keysAxis.vertical > 0 ? 1 : -0.7) *
-                (1 + +(localPlayer.effect === 1))
-        );
-        localPlayer.body.velocity = new CANNON.Vec3(carVelocity.x, localPlayer.body.velocity.y, carVelocity.z);
-        // Update the camera position based on the spherical coordinates
+
+        playerMovement.update(deltaTime, keysAxis, _quaternion);
 
         [...keysDown].forEach((k) => {
             // @ts-ignore
@@ -865,9 +864,10 @@ export default function Game({
     }
     function _emitLocalPlayerPositions() {
         socket?.emit("m", {
-            pos: [localPlayer.body.position.x, localPlayer.body.position.y, localPlayer.body.position.z],
+            pos: localPlayer.body.position.toArray(),
             rot: localPlayer.rotation,
             side: keysAxis.horizontal,
+            vel: localPlayer.body.velocity.toArray(),
         });
     }
 
@@ -886,21 +886,22 @@ export default function Game({
         _mixerUpdate();
 
         // Setups
-        setFPS(fps);
+        if (settings.showFps) setFPS(fps);
 
         ItemCube.fps = fps;
         Player.fps = fps;
         Player.clients = clients;
         MapCurve.deltaTime = deltaTime;
 
+        DISPLAY.CLEAR();
+        DISPLAY.SET(localPlayer.body.id === localPlayer.carBody.id, localPlayer.body.mass);
+
         setPOS(mapCurve.rankPlayers([...Array.from(clients.values()), localPlayer]).get(socket ? socket.id : "") ?? 0);
+        // setPOS(localPlayer.position);
 
         world.step(fps < 10 ? 1 / 60 : deltaTime);
         renderer.render(scene, camera);
     };
 
     renderer.setAnimationLoop(animate);
-    // setInterval(() => {
-    // animate();
-    // }, 1000 / settings.fps);
 }

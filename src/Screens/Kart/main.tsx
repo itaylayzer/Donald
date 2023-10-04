@@ -194,7 +194,11 @@ export default function Main() {
 
 function App({ socket, meshes, exit }: { socket: Socket | null; meshes: loadedAssets; exit: () => void }) {
     const settingsContext = useSettings();
+
+    // Logs
     const [consoles, SetConsoles] = useState<Array<string>>([]);
+    const [displays, SetDisplays] = useState<Array<string>>([]);
+    // Display
     const [fps, SetFPS] = useState<number>(0);
     const [velocityMeter, SetVelocityMeter] = useState<number>(0);
     const [gameItem, SetItem] = useState<Item>(false);
@@ -211,7 +215,7 @@ function App({ socket, meshes, exit }: { socket: Socket | null; meshes: loadedAs
             }
             newa += "     ";
         }
-        console.log(...what);
+        // console.log(...what);
         SetConsoles((old) => [newa, ...old]);
     }
 
@@ -228,6 +232,24 @@ function App({ socket, meshes, exit }: { socket: Socket | null; meshes: loadedAs
                     setEFFECT: setEff,
                     setROUNDS: setRounds,
                     setPOS: SetPos,
+                    DISPLAY: {
+                        CLEAR() {
+                            SetDisplays([]);
+                        },
+                        SET(...what: any[]) {
+                            let newa: string = "";
+                            for (const x of what) {
+                                if (typeof x === "string") {
+                                    newa += x;
+                                } else {
+                                    newa += JSON.stringify(x);
+                                }
+                                newa += "     ";
+                            }
+                            // console.log(...what);
+                            SetDisplays((old) => [newa, ...old]);
+                        },
+                    },
                     settings: settingsContext.settings,
                 });
             } else {
@@ -247,37 +269,46 @@ function App({ socket, meshes, exit }: { socket: Socket | null; meshes: loadedAs
 
             <div className="gameUI" id="kart">
                 <video id="troll" src="videos/troll.mp4"></video>
+                <div className="left-bottom">{playerRounds}/3🏴</div>
                 <div className="right-bottom">
-                    {playerPos}rd {playerRounds}/3 rounds
+                    <label>{playerPos}</label>rd
                 </div>
-                <div className="left-bottom">{velocityMeter.toFixed(2)} CC</div>
-                <div className="center-top">{fps.toFixed(0)} FPS</div>
-                <div className="right-top">
+                {settingsContext.settings.showFps ? (
+                    <div className="right-top">
+                        {fps.toFixed(0)} FPS {velocityMeter.toFixed(2)} CC
+                    </div>
+                ) : (
+                    <></>
+                )}
+                <div className="left-top">
                     {effect}{" "}
-                    {gameItem !== 3 && gameItem !== 1 ? (
-                        <>
-                            <img
-                                style={{ scale: "0.5" }}
-                                src={
-                                    gameItem === 0
-                                        ? "sprites/star.png"
-                                        : gameItem === 2
-                                        ? "sprites/stop.png"
-                                        : gameItem === 4
-                                        ? "sprites/biggie.png"
-                                        : gameItem === 5
-                                        ? "sprites/troll.png"
-                                        : ""
-                                }
-                                alt=""
-                            />
-                        </>
-                    ) : (
-                        <>{gameItem}</>
-                    )}
+                    <img
+                        style={{ scale: "0.5" }}
+                        src={
+                            gameItem === 0
+                                ? "sprites/star.png"
+                                : gameItem === 1
+                                ? "sprites/rocket.png"
+                                : gameItem === 2
+                                ? "sprites/stop.png"
+                                : gameItem === 3
+                                ? "sprites/wheel.png"
+                                : gameItem === 4
+                                ? "sprites/biggie.png"
+                                : gameItem === 5
+                                ? "sprites/troll.png"
+                                : ""
+                        }
+                        alt=""
+                    />
                 </div>
                 <div className="consoles">
                     {consoles.map((v) => (
+                        <p>{v}</p>
+                    ))}
+                </div>
+                <div className="displays">
+                    {displays.map((v) => (
                         <p>{v}</p>
                     ))}
                 </div>

@@ -67,8 +67,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
 const defaultSettings = {
     videoScale: 1,
-    fps: 120,
-    gamepadIndex:1
+    fpsCap: 120,
+    gamepadIndex:1,
+    showFps:true,
 } as Settings;
 
 export function saveGameSettingsToCookie(settings: Settings) {

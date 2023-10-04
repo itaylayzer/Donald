@@ -1,11 +1,14 @@
 import * as THREE from "three";
 import { Player } from "./player";
 export class MapCurve {
-    private points: THREE.Vector3[] = [];
+    public points: THREE.Vector3[] = [];
     public static deltaTime: number;
-    constructor(data: { x: number; y: number; z: number }[]) {
+    public readonly winningIndex: number;
+    constructor(data: { x: number; y: number; z: number }[], winningIndex: number) {
         // Convert the JSON data to THREE.Vector3
         this.points = data.map((point) => new THREE.Vector3(point.x, point.y, point.z));
+
+        this.winningIndex = winningIndex;
     }
 
     // Function to scale the entire curve
@@ -113,7 +116,7 @@ export class MapCurve {
         return playerRankings;
     }
 
-    private findClosestPointIndex(position: THREE.Vector3): number {
+    public findClosestPointIndex(position: THREE.Vector3): number {
         let closestIndex = 0;
         let closestDistance = position.distanceTo(this.points[0]);
 
@@ -168,7 +171,7 @@ export class MapCurve {
             const currentRotation = Math.atan2(direction.z, direction.x); // Calculate the new rotation in radians
 
             // Update the player's position using the update function
-            update(currentPosition, (currentRotation * 180) / Math.PI);
+            update(currentPosition, currentRotation * THREE.MathUtils.RAD2DEG);
             // Update the time elapsed
             timeElapsed += MapCurve.deltaTime * 1000;
             // Check if the duration is complete
@@ -238,7 +241,7 @@ export class MapCurve {
             const currentRotation = Math.atan2(direction.z, direction.x); // Calculate the new rotation in radians
 
             // Update the player's position using the update function
-            update(currentPosition, (currentRotation * 180) / Math.PI);
+            update(currentPosition, currentRotation * THREE.MathUtils.RAD2DEG);
 
             // Check for nearby players
             const nearbyPlayer = this.getNearbyPlayers(players, currentPosition, maxDistanceToPlayer, minAngle, maxAngle);

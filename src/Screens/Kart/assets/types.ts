@@ -25,6 +25,7 @@ export type Item = number | false;
 
 export interface Settings {
     videoScale: number;
-    fps: number;
+    fpsCap: number;
     gamepadIndex:number;
+    showFps:boolean;
 }

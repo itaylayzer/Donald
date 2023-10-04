@@ -166,9 +166,29 @@ div.gameUI#kart {
 
 div.gameUI#kart div.left-bottom {
   position: absolute;
-  left: 120px;
-  bottom: 60px;
+  left: 10px;
+  bottom: 10px;
+  font-size: 45px;
+  -webkit-text-fill-color: white;
+  -webkit-text-stroke-width: 0px;
+  -webkit-text-stroke-color: white;
+  background-color: rgb(20,20,20,80%);
+  text-align: center;
+  font-size: 45px;
+  border-radius: 10px;
+}
+div.gameUI#kart div.left-bottom p{
+  font-size: 20px;
+  margin:0;
+  background-color: rgb(20,20,20,80%);
+  padding:5px 20px;
+  border-top-right-radius: 10px;
+  border-top-left-radius:10px;
+  text-align: center;
+}
+div.gameUI#kart div.left-bottom label{
   font-size: 60px;
+  margin-right:5px;
 }
 
 div.gameUI#kart div.right-bottom {
@@ -187,12 +207,23 @@ div.gameUI#kart div.right-top {
   filter:drop-shadow(5px 5px 0px rgb(0,0,0,50%))
 }
 
-div.gameUI#kart div.center-top {
-  position: absolute;
+div.gameUI#kart div.left-top {
+  /* position: absolute;
   right: 50%;
   translate: 50% 0%;
   top: 60px;
-  gap: 10px;
+  gap: 10px; */
+
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  -webkit-text-fill-color: white;
+  -webkit-text-stroke-width: 0px;
+  -webkit-text-stroke-color: white;
+  background-color: rgb(20,20,20,80%);
+  padding:5px 15px;
+  font-size: 20px;
+  border-radius: 10px;
 }
 
 
@@ -206,7 +237,7 @@ div.consoles {
   overflow: auto;
   position: absolute;
   left: 0;
-  top: 0;
+  top: 50px;
   width: fit-content;
   max-height: 100%;
 }
@@ -222,6 +253,30 @@ div.consoles p {
   margin: 0;
   padding-block: 2.5px;
 }
+
+div.displays {
+  width: fit-content;
+  display: table;
+  overflow: auto;
+  position: absolute;
+  right: 0px;
+  top: 50px;
+  width: fit-content;
+  max-height: 100%;
+}
+
+div.displays p {
+  color: white;
+  -webkit-text-stroke: 0;
+  font-weight: 100;
+  font-size: 20px;
+  background-color: rgb(20, 20, 20, 50%);
+  width: 100%;
+  text-align: left;
+  margin: 0;
+  padding-block: 2.5px;
+}
+
 
 div.gameUI#kart video {
   position: absolute;

@@ -21,7 +21,7 @@ export default class StopSign {
         this.mesh.position.copy(Vec3ToVector3(xplayer.body.position.clone().vadd(new CANNON.Vec3(0, 0, 0))));
 
         const _quaternion = new CANNON.Quaternion();
-        _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), (xplayer.rotation * Math.PI) / 180);
+        _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), xplayer.rotation  * THREE.MathUtils.DEG2RAD);
 
         this.mesh.quaternion.copy(QuatToQuaternion(_quaternion));
         this.body = new CANNON.Body({

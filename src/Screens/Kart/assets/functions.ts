@@ -103,6 +103,28 @@ export const TWWEENS = {
                     t += deltaTime * 1000;
                 }, deltaTime * 1000);
             },
+            playerRotation: (p: Player, rot:number, duration: number) => {
+                const startRot = p.rotation;
+                const endRot = rot;
+
+                let interval: number;
+                const tween = new tweenModule.Tween({r:startRot})
+                    .to({r:endRot}, duration)
+                    .easing(Easing.
+                        Cubic.Out)
+                    .onUpdate((r:{r:number}) => {
+                        p.rotation = r.r;
+                    })
+                    .onComplete(() => {
+                        clearInterval(interval);
+                    })
+                    .start(0);
+                let t = 0;
+                interval = setInterval(() => {
+                    tween.update(t);
+                    t += deltaTime * 1000;
+                }, deltaTime * 1000);
+            },
             sign: (ss: StopSign, num: number, fun?: () => void) => {
                 const startScale = ss.mesh.scale.clone();
                 const endScale = new THREE.Vector3(num, num, num);
@@ -153,6 +175,7 @@ export const TWWEENS = {
                             p.body.collisionFilterMask = filters;
                             p.body.type = type;
                             p.moveable = true;
+                            p.body.velocity.setZero();
                         }, 1000);
                     })
                     .start(0);
@@ -165,3 +188,25 @@ export const TWWEENS = {
         };
     },
 };
+
+export const CONVERTS = {
+    Rad2Deg: 180 / Math.PI,
+    Deg2Rad: Math.PI / 180,
+};
+
+export function project(v: CANNON.Vec3, projectedTo: CANNON.Vec3): CANNON.Vec3 {
+    const vClone = v.clone();
+    const projectedToClone = projectedTo.clone();
+
+    const dotProduct = vClone.dot(projectedToClone);
+    const projectedLength = projectedToClone.length();
+
+    if (projectedLength === 0) {
+        // Avoid division by zero
+        return new CANNON.Vec3(0, 0, 0);
+    }
+
+    const scaleFactor = dotProduct / (projectedLength * projectedLength);
+
+    return projectedToClone.scale(scaleFactor);
+}
