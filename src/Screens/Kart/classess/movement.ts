@@ -4,23 +4,28 @@ import * as THREE from "three";
 import { lerp } from "three/src/math/MathUtils.js";
 import tweenModule, { Easing } from "three/examples/jsm/libs/tween.module.js";
 import { project } from "../assets/functions";
+import { PredictedMovement } from "./predicted";
 
 export class PlayerMovement {
     public player: Player;
     public camera: THREE.Camera;
     public forces: Map<number, CANNON.Vec3>;
+    public unaviableIds:Set<string>;
     public static deltaTime: number;
-    public deltaRotation: number;
-
+    public driftRot: number;
+    public rotation: number;
     public logFunc: (...what: any[]) => void;
     constructor(p: Player, c: THREE.Camera, log: (...what: any[]) => void) {
         this.player = p;
+        this.unaviableIds = new Set();
         // this.forces = new Map();
         this.camera = c;
-        this.deltaRotation = this.player.rotation; // for drifting!
         this.forces = new Map();
         this.logFunc = log;
+        this.driftRot = 0;
+        this.rotation = p.rotation;
         this.player.onBump = (p) => {
+            if (this.unaviableIds.has(p.id)) return;
             function bump(mine: Player, other: Player) {
                 // calculate the bump forcce
                 const vel = mine.body.position.clone().vsub(other.body.position.clone());
@@ -29,22 +34,32 @@ export class PlayerMovement {
                 return vel.scale(1 / vel.length()).scale(length);
             }
 
-            function fixedBump(mine: Player, other: Player): CANNON.Vec3 {
+            function fixedBump(mine: Player, other: Player): { mine: CANNON.Vec3; other: CANNON.Vec3 } {
                 const a = bump(mine, other);
                 const b = bump(other, mine);
 
                 if (a.length() > b.length()) {
                     // the hitter is other
-                    return a;
+
+                    return { mine: a.clone(), other: a.clone().scale(-0.33) };
                 }
                 if (b.length() > a.length()) {
                     // the hitter is mine
-                    return b.scale(-0.33);
-                } else return a;
+                    return { mine: b.clone().scale(-0.33), other: b.clone() };
+                } else return { mine: a.clone(), other: a.clone() };
+            }
+            this.unaviableIds.add(p.id);
+            
+            const forces = fixedBump(this.player, p);
+            this.applyForces(forces.mine);
+            const xpredicted = PredictedMovement.list.get(p.id);
+            if (xpredicted) {
+                xpredicted.applyForces(forces.other);
             }
 
-            const myForce = fixedBump(this.player, p);
-            this.applyForces(myForce);
+            setTimeout(()=>{
+                this.unaviableIds.delete(p.id);
+            },200)
         };
     }
     public applyForces(f: CANNON.Vec3) {
@@ -79,11 +94,25 @@ export class PlayerMovement {
             tween.update(t);
         }, 1000 * PlayerMovement.deltaTime);
     }
-
-    public update(dT: number, keysAxis: { vertical: number; horizontal: number }, forwardQuaternion: CANNON.Quaternion) {
+    public update(dT: number, keysAxis: { vertical: number; horizontal: number; drift: boolean }) {
         PlayerMovement.deltaTime = dT;
-        this.deltaRotation = lerp(this.deltaRotation, this.player.rotation, 0.1);
-        this.player.rotation -= keysAxis.horizontal * 2 * keysAxis.vertical * (60 * dT);
+
+        if (keysAxis.drift) {
+            this.driftRot = lerp(this.driftRot, keysAxis.horizontal * 4 * keysAxis.vertical * (60 * dT), dT);
+
+            this.rotation -= this.driftRot; //* Math.min(Math.max(this.player.body.velocity.clone().length(),0),1);
+            this.player.rotation = this.rotation % 360;
+            if (this.player.rotation < 0) this.player.rotation += 360;
+        } else {
+            this.driftRot = 0;
+            this.rotation -= keysAxis.horizontal * 2 * keysAxis.vertical * (60 * dT);
+            // this.player.rotation -= ;
+            this.player.rotation = this.rotation % 360;
+            if (this.player.rotation < 0) this.player.rotation += 360;
+        }
+
+        const forwardQuaternion = new CANNON.Quaternion();
+        forwardQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), this.player.rotation * THREE.MathUtils.DEG2RAD);
 
         // this.movement(keysAxis.vertical, dT);
         const forwardVector = new CANNON.Vec3(0, 0, 1);

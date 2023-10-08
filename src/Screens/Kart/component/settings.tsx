@@ -25,15 +25,15 @@ export default function settingComp() {
             <h2>Audio</h2>
             <div className="slider">
                 <p>master audio </p>
-                <Slider defualtValue={100} fixed={0} max={100} min={0} suffix="%" step={5} />
+                <Slider defualtValue={settings.settings.volumes[0]} fixed={0} max={100} min={0} suffix="%" step={5} />
             </div>
             <div className="slider">
                 <p>sfx audio </p>
-                <Slider defualtValue={25} fixed={0} max={100} min={0} suffix="%" step={5} />
+                <Slider defualtValue={settings.settings.volumes[1]} fixed={0} max={100} min={0} suffix="%" step={5} />
             </div>
             <div className="slider">
                 <p>music audio </p>
-                <Slider defualtValue={75} fixed={0} max={100} min={0} suffix="%" step={5} />
+                <Slider defualtValue={settings.settings.volumes[2]} fixed={0} max={100} min={0} suffix="%" step={5} />
             </div>
             <h2>Graphics</h2>
             <div className="slider">
@@ -48,33 +48,14 @@ export default function settingComp() {
                     onValue={(d) => {
                         settings.updateSettings({
                             videoScale: d / 100,
-                            fpsCap: settings.settings.fpsCap,
                             gamepadIndex: settings.settings.gamepadIndex,
-                            showFps:settings.settings.showFps
+                            showFps:settings.settings.showFps,
+                            volumes:settings.settings.volumes
                         });
                     }}
                 />
             </div>
-            
-            <div className="slider">
-                <p>max FPS </p>
-                <Slider
-                    defualtValue={settings.settings.fpsCap}
-                    fixed={0}
-                    max={240}
-                    min={30}
-                    suffix="FPS"
-                    step={10}
-                    onValue={(d) => {
-                        settings.updateSettings({
-                            videoScale: settings.settings.videoScale,
-                            fpsCap: d,
-                            gamepadIndex: settings.settings.gamepadIndex,
-                            showFps:settings.settings.showFps
-                        });
-                    }}
-                />
-            </div>
+
             <div className="slider">
                 <p>show FPS </p>
                 <input
@@ -84,9 +65,9 @@ export default function settingComp() {
                         console.log(e.currentTarget.checked);
                         settings.updateSettings({
                             videoScale: settings.settings.videoScale,
-                            fpsCap: settings.settings.fpsCap,
                             gamepadIndex: settings.settings.gamepadIndex,
-                            showFps:e.currentTarget.checked
+                            showFps:e.currentTarget.checked,
+                            volumes:settings.settings.volumes
                         });
                     }}
                 />
@@ -102,9 +83,9 @@ export default function settingComp() {
                         console.log(`change selected to ${parseInt(e.currentTarget.value)}`);
                         settings.updateSettings({
                             videoScale: settings.settings.videoScale,
-                            fpsCap: settings.settings.fpsCap,
                             gamepadIndex: parseInt(e.currentTarget.value),
-                            showFps:settings.settings.showFps
+                            showFps:settings.settings.showFps,
+                            volumes:settings.settings.volumes
                         });
                     }}
                 >

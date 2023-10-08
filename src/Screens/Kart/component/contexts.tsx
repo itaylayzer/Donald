@@ -22,7 +22,7 @@ function getGameSettingsFromCookies() {
     let savedSettings = {};
     cookies.forEach((cookie) => {
         const [key, value] = cookie.trim().split("=");
-        if (key === "gameSettings") {
+        if (key === "kart") {
             try {
                 savedSettings = JSON.parse(decodeURIComponent(value));
             } catch (error) {
@@ -65,11 +65,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
-const defaultSettings = {
+export const defaultSettings = {
     videoScale: 1,
-    fpsCap: 120,
     gamepadIndex:1,
     showFps:true,
+    volumes:[0,0,0]
 } as Settings;
 
 export function saveGameSettingsToCookie(settings: Settings) {
@@ -77,7 +77,7 @@ export function saveGameSettingsToCookie(settings: Settings) {
     const encodedSettings = encodeURIComponent(settingsJSON);
 
     // Define the cookie name
-    const cookieName = "gameSettings";
+    const cookieName = "kart";
 
     // Set the cookie with an expiration date (e.g., 30 days from now)
     const expirationDate = new Date();

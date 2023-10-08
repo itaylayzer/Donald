@@ -1,4 +1,4 @@
-import { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+
 export interface ItemBox {
     available: boolean;
     pos: [number, number, number];
@@ -15,17 +15,12 @@ export type CustomLight = {
     type: "point" | "directional" | "ambient";
 };
 
-export type loadedAssets = {
-    gltf: { [key: string]: GLTF };
-    fbx: { [key: string]: THREE.Group };
-    textures: { [key: string]: THREE.Texture };
-};
 
 export type Item = number | false;
 
 export interface Settings {
     videoScale: number;
-    fpsCap: number;
     gamepadIndex:number;
     showFps:boolean;
+    volumes:[number,number,number];
 }

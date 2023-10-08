@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import * as THREE from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { CookieManager } from "../assets/CookieManager";
+import Mark from "../mark";
 type CustomLight = {
     color: THREE.ColorRepresentation;
     intensity: number;
@@ -10,9 +12,8 @@ type CustomLight = {
     type: "point" | "directional" | "ambient";
 };
 
-function App() {
+function Intro() {
     const [pvalue, SetProgress] = useState<number>(0);
-    useEffect(() => {}, [pvalue]);
     useEffect(() => {
         function loadMeshes(items: { [key: string]: string }): Promise<{ [key: string]: THREE.Group<THREE.Object3DEventMap> }> {
             return new Promise((resolve, reject) => {
@@ -42,7 +43,7 @@ function App() {
                 }
 
                 gltfloader.manager.onLoad = () => {
-                    console.log(`Loaded`, Array.from(Object.keys(l)));
+                    // console.log(`Loaded`, Array.from(Object.keys(l)));
                     resolve(l);
                 };
             });
@@ -100,10 +101,10 @@ function App() {
             scene.add(fbx);
             const mixer = new THREE.AnimationMixer(fbx);
             const sleepingAnim = mixer.clipAction(definedMeshes.sleeping.animations[0]);
-            console.log(sleepingAnim);
+            // console.log(sleepingAnim);
             sleepingAnim.play();
             sleepingAnim.weight = 1;
-            console.log("started playing");
+            // console.log("started playing");
             // @ts-ignore
             globalThis.fbx = fbx;
             // @ts-ignore
@@ -200,9 +201,9 @@ function App() {
             .then((meshes) => {
                 SetProgress(1);
                 function waitForCanvas() {
-                    try {
+                    if (document.querySelector("div.gameContainer") != null) {
                         Game(meshes);
-                    } catch {
+                    } else {
                         requestAnimationFrame(waitForCanvas);
                     }
                 }
@@ -241,7 +242,10 @@ function App() {
                                     <button
                                         style={{ backgroundImage: "url('raceb.png')" }}
                                         onClick={() => {
-                                            document.location.href += "Kart";
+                                            if (document.location.search.length > 0) {
+                                                const s = document.location.search;
+                                                document.location.href = document.location.href.replace(s, "") + `Kart${s}`;
+                                            } else document.location.pathname += "Kart";
                                         }}
                                     >
                                         Donald Kart
@@ -249,7 +253,12 @@ function App() {
                                     <button disabled style={{ backgroundImage: "url('party.png')" }}>
                                         Donald Party
                                     </button>
-                                    <button disabled style={{ backgroundImage: "url('donald.png')" }}>
+                                    <button style={{ backgroundImage: "url('donald.png')" }} onClick={() => {
+                                            if (document.location.search.length > 0) {
+                                                const s = document.location.search;
+                                                document.location.href = document.location.href.replace(s, "") + `Mii${s}`;
+                                            } else document.location.pathname += "Mii";
+                                        }}>
                                         Donald Mii
                                     </button>
                                 </div>
@@ -258,16 +267,120 @@ function App() {
                     )}
                 </>
             ) : (
-                <div className="progress">
-                    <h3>Loading</h3>
+                <article className="progress">
                     <main>
-                        {" "}
-                        <progress value={pvalue} max={1}></progress> <p>{(pvalue * 100).toFixed(2)}%</p>
+                        <h3>Loading</h3>
+                        <div>
+                            <progress value={pvalue} max={1}></progress> <p>{(pvalue * 100).toFixed(2)}%</p>
+                        </div>
                     </main>
-                </div>
+                </article>
             )}
+        </>
+    );
+}
 
-            <footer>@Coder-1t45 | 19.9.23</footer>
+function App() {
+    const [pId, setPId] = useState<number>(0);
+    const waitTime = 5000; // 10 seconds in milliseconds
+    const maxPId = 3; // Set your desired maximum value for pId here
+    const buttonRef = React.useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (buttonRef.current)
+            buttonRef.current.onclick = () => {
+                if (buttonRef.current) {
+                    buttonRef.current.style.animation = "fade-out 0.5s ease .5s, scale-out .8s cubic-bezier(.43,-0.01,1,-0.34) .2s";
+                    buttonRef.current.style.cursor = "wait";
+                }
+                // button click audio
+                const clickOST = new Audio("sounds/futuristic-press.mp3");
+                clickOST.currentTime = 0.27;
+                clickOST.play();
+                setTimeout(() => {
+                    const windOST = new Audio("sounds/wind.mp3");
+                    windOST.play();
+                    const cookieName = `firstTime`;
+
+                    const hasReset = new URLSearchParams(document.location.search).has("reset");
+                    if (hasReset) {
+                        CookieManager.set(cookieName, "false");
+                    }
+
+                    const firstUse =
+                        !CookieManager.has(cookieName) || (CookieManager.has(cookieName) && CookieManager.getTyped<boolean>(cookieName) === false);
+                    if (!firstUse) {
+                        setPId(maxPId);
+                        return;
+                    }
+                    let timerId: number;
+                    let PID = 1;
+                    setPId(PID);
+                    const handleKeyPress = (event: KeyboardEvent) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                            PID++;
+                            if (PID === maxPId) {
+                                setPId(maxPId);
+                                CookieManager.set(cookieName, "true");
+                                document.removeEventListener("keydown", handleKeyPress);
+                            } else setPId(PID);
+                            clearTimeout(timerId);
+                            startNewTimer();
+                        }
+                    };
+
+                    const startNewTimer = () => {
+                        timerId = setTimeout(() => {
+                            PID++;
+                            if (PID === maxPId) {
+                                setPId(maxPId);
+                                CookieManager.set(cookieName, "true");
+                                document.removeEventListener("keydown", handleKeyPress);
+                            } else setPId(PID);
+                            startNewTimer();
+                        }, waitTime);
+                    };
+
+                    document.addEventListener("keydown", handleKeyPress);
+
+                    startNewTimer(); // Start the initial timer
+
+                    return () => {
+                        document.removeEventListener("keydown", handleKeyPress);
+                        clearTimeout(timerId); // Clean up the timer on component unmount
+                    };
+                }, 1000);
+            };
+    }, [buttonRef]);
+
+    return (
+        <>
+            {pId === maxPId ? (
+                <Intro />
+            ) : (
+                <article>
+                    <main style={{ animation: "fade-in 1s cubic-bezier(.3,0,.3,1)" }} key={pId}>
+                        {pId === 0 ? (
+                            <button ref={buttonRef} className="s1">
+                                Donald
+                            </button>
+                        ) : pId === 1 ? (
+                            <>
+                                <h3>Donald failed asleep</h3>
+                                <h4>waiting for Someone who forgot him.</h4>
+                            </>
+                        ) : pId === 2 ? (
+                            <>
+                                <h2>This site uses Cookies</h2>
+                                <p>we wont gather any password or emails</p>
+                            </>
+                        ) : (
+                            <></>
+                        )}
+                    </main>
+                </article>
+            )}
+            <Mark />
         </>
     );
 }

@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
 import { Socket } from "../assets/socket.io";
-import { QuatToQuaternion, QuaternionToQuat, RotToQuat, TWWEENS, Vec3ToVector3, Vector3ToVec3 } from "../assets/functions";
+import { QuaternionToQuat, RotToQuat, TWWEENS, Vec3ToVector3, Vector3ToVec3 } from "../assets/functions";
 import CannonDebugger from "../utils/cannonDebugRenderer";
 import { lerp } from "three/src/math/MathUtils.js";
 import { Player } from "../classess/player";
-import { CustomLight, IBoxList, Item, Settings, loadedAssets } from "../assets/types";
+import { CustomLight, IBoxList, Item, Settings } from "../assets/types";
 import { filtersDefenitions as filters } from "../assets/inputs";
 import { ItemCube } from "../classess/itemCube";
 import StopSign from "../classess/stopSign";
@@ -13,7 +13,8 @@ import { car_cm, groundMaterial, ground_cm, player_ground_cm } from "../assets/m
 import curveJSON from "../assets/curveJSON.json";
 import { MapCurve } from "../classess/mapCurve";
 import { PlayerMovement } from "../classess/movement";
-
+import { loadedAssets } from "#Donald/assets/AssetLoader";
+import { PredictedMovement } from "../classess/predicted";
 export default function Game({
     socket,
     log,
@@ -24,6 +25,7 @@ export default function Game({
     setEFFECT,
     setROUNDS,
     setPOS,
+    // @ts-ignore
     DISPLAY,
     settings,
 }: {
@@ -129,10 +131,12 @@ export default function Game({
     const iboxes = new Map<string, ItemCube>();
 
     let worldMeshes: Array<THREE.Mesh> | undefined = undefined;
+    let drift: boolean = false;
+
     const keyHandlers = {
         pressing: {},
         up: {
-            KeyJ: _UseItem,
+            KeyK: _UseItem,
             Enter: _UseItem,
             ShiftLeft: _UseItem,
             KeyV: () => {
@@ -140,6 +144,9 @@ export default function Game({
                     scene.remove(...worldMeshes);
                     worldMeshes = undefined;
                 }
+            },
+            KeyJ: () => {
+                drift = false;
             },
         },
         down: {
@@ -157,6 +164,9 @@ export default function Game({
             },
             KeyO: () => {
                 localPlayer.body.applyImpulse(new CANNON.Vec3(1000, 0, 0));
+            },
+            KeyJ: () => {
+                drift = true;
             },
         },
     };
@@ -472,7 +482,7 @@ export default function Game({
                     const sittingPose = xplayer.mixer.clipAction(definedFbxs.sitting.animations[0]);
                     sittingPose.play();
                 }
-
+                new PredictedMovement(xplayer);
                 clients.set(x, xplayer);
             }
 
@@ -518,35 +528,20 @@ export default function Game({
             const xplayer = new Player(x);
             const sittingPose = xplayer.mixer.clipAction(definedFbxs.sitting.animations[0]);
             sittingPose.play();
-
+            new PredictedMovement(xplayer);
             clients.set(x, xplayer);
         });
         socket.on("m", (args: { pos: [number, number, number]; rot: number; side: number; vel: [number, number, number]; id: string }) => {
-            const xplayer = clients.get(args.id);
-            if (xplayer === undefined) return;
-            xplayer.body.position.set(args.pos[0], args.pos[1], args.pos[2]);
-            xplayer.mesh.position.set(args.pos[0], args.pos[1] - 0.2, args.pos[2]);
-            const _quaternion = new CANNON.Quaternion();
-            _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), args.rot * THREE.MathUtils.DEG2RAD);
-            xplayer.mesh.quaternion.copy(QuatToQuaternion(_quaternion));
-            xplayer.body.mass = 10;
-            xplayer.mesh.rotateZ((args.side * 3.14) / 15);
-            xplayer.rotation = args.rot;
-            xplayer.body.velocity.set(args.vel[0], 0, args.vel[2]);
-
-            if (xplayer.carBody) {
-                xplayer.carBody.position.set(args.pos[0], args.pos[1], args.pos[2]);
-                xplayer.carBody.quaternion.copy(_quaternion);
-                xplayer.carBody.angularDamping = 1;
-                xplayer.carBody.initAngularVelocity.scale(0, xplayer.carBody.initAngularVelocity);
-                xplayer.carBody.angularVelocity.scale(0, xplayer.carBody.angularVelocity);
-            }
+            const xpredit = PredictedMovement.list.get(args.id);
+            if (!xpredit) return;
+            xpredit.internetUpdate({ pos: args.pos, rot: args.rot, side: args.side, vel: args.vel });
         });
         socket.on("p-dis", (id: string) => {
             const xplayer = clients.get(id);
             if (xplayer === undefined) return;
             clients.delete(id);
             world.removeBody(xplayer.body);
+            PredictedMovement.list.delete(id);
             if (xplayer.mesh != null) scene.remove(xplayer.mesh);
         });
         socket.on("br", (r: number) => {
@@ -611,6 +606,7 @@ export default function Game({
                             localPlayer.body.position.copy(Vector3ToVec3(v.clone().add(new THREE.Vector3(0, 2, 0))));
                             localPlayer.body.velocity.y = 0;
                             localPlayer.rotation = lerp(localPlayer.rotation, -r + 90, deltaTime * 5);
+                            // localPlayer.rotation = -r + 90;
                         },
                         () => {
                             localPlayer.moveable = true;
@@ -738,10 +734,7 @@ export default function Game({
         horizontal: 0,
         vertical: 0,
     };
-    const keysAxisRaw: {
-        horizontal: number;
-        vertical: number;
-    } = { horizontal: 0, vertical: 0 };
+    const keysAxisRaw = { horizontal: 0, vertical: 0 };
 
     const cameraTarget = new THREE.Vector3(0, 0, 0);
     const clock = new THREE.Clock();
@@ -784,11 +777,10 @@ export default function Game({
                 }
             }
         }
-        const x = keysAxisRaw;
         for (const key in Object.keys(keysAxis)) {
             const k = Object.keys(keysAxis)[key] as "horizontal" | "vertical";
 
-            keysAxis[k] = lerp(keysAxis[k], x[k], deltaTime * 3);
+            keysAxis[k] = lerp(keysAxis[k], keysAxisRaw[k], deltaTime * 3);
         }
     }
     function _rotateICubes(fps: number) {
@@ -814,14 +806,13 @@ export default function Game({
 
         if (!localPlayer.spinning) {
             const thetha = localPlayer.rotation * THREE.MathUtils.DEG2RAD + keysAxis.horizontal * 0.2 * keysAxis.vertical;
-            spherical.phi = (Math.PI * (0.6 + keysAxis.vertical / 20)) / 2;
+            // spherical.phi = (Math.PI * (0.6 + keysAxis.vertical / 20)) / 2;
+            spherical.phi = (Math.PI * 0.6) / 2;
             spherical.theta = thetha + Math.PI;
         }
 
         camera.position.setFromSpherical(spherical).add(cameraTarget);
         camera.lookAt(cameraTarget);
-
-        camera.rotateZ(keysAxis.horizontal / 20);
 
         const _quaternion = new CANNON.Quaternion();
         _quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), localPlayer.rotation * THREE.MathUtils.DEG2RAD);
@@ -840,6 +831,10 @@ export default function Game({
         localPlayer.setPos(mapCurve.findClosestPointIndex(localPlayer.mesh.position), mapCurve.points.length - 1);
         setVEL(localPlayer.body.velocity.length());
         if (!localPlayer.moveable) return;
+
+        camera.rotateZ(keysAxis.horizontal / 20);
+        spherical.phi += (Math.PI * (keysAxis.vertical / 20)) / 2;
+
         if (localPlayer.body.position.y < -20) {
             TWWEENS.deltaTime(deltaTime).playerPosition(
                 localPlayer,
@@ -848,7 +843,7 @@ export default function Game({
             );
         }
 
-        playerMovement.update(deltaTime, keysAxis, _quaternion);
+        playerMovement.update(deltaTime, { ...keysAxis, drift });
 
         [...keysDown].forEach((k) => {
             // @ts-ignore
@@ -870,6 +865,11 @@ export default function Game({
             vel: localPlayer.body.velocity.toArray(),
         });
     }
+    function _predictOnlineMovement(){
+        Array.from(PredictedMovement.list.values()).forEach((e)=>{
+            e.localUpdate();
+        })
+    }
 
     const animate = () => {
         deltaTime = clock.getDelta();
@@ -878,9 +878,10 @@ export default function Game({
         _keyAxisHandle(deltaTime);
         _rotateICubes(fps);
         _localPlayerMovement(fps);
+        _predictOnlineMovement();
 
         // Forground Display
-        cannonDebugger.update();
+        // cannonDebugger.update();
         // _helper_roadPosInit();
         _emitLocalPlayerPositions();
         _mixerUpdate();
@@ -892,9 +893,6 @@ export default function Game({
         Player.fps = fps;
         Player.clients = clients;
         MapCurve.deltaTime = deltaTime;
-
-        DISPLAY.CLEAR();
-        DISPLAY.SET(localPlayer.body.id === localPlayer.carBody.id, localPlayer.body.mass);
 
         setPOS(mapCurve.rankPlayers([...Array.from(clients.values()), localPlayer]).get(socket ? socket.id : "") ?? 0);
         // setPOS(localPlayer.position);

@@ -27,6 +27,8 @@ without those assets the game wasn't exists
 4. Sound Effects:
     1. [Player Hit Another Player](https://www.youtube.com/watch?v=nXVEjGZFdOQ&ab_channel=MonkeuLover)
     2. [Item Use](https://www.youtube.com/watch?v=Zdrca7wy8TQ&ab_channel=YourAverageFlushed)
+    3. [Wind](https://www.youtube.com/watch?si=HNFjOK_G0K6UW5PB&v=ZD47Mhzm-CU&feature=youtu.be&ab_channel=AudioSoundEffect)
+    4. [Futuristic Click](https://youtu.be/yIkM0dmPT-0?si=9k20uWkENhVVhCac)
 ## Todo:
 ### Donald Kart:
 1. **Prototype**
