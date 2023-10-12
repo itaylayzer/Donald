@@ -9,6 +9,7 @@ export class CharactersList {
     public staticMesh: THREE.Object3D<THREE.Object3DEventMap>;
     public list: Map<string, Character>;
     private _add: (c: Character) => void;
+    // @ts-ignore
     private _remove: (c: Character) => void;
     private _addProp: (p: THREE.Group<THREE.Object3DEventMap>) => void;
     public starterAnimation: undefined | THREE.AnimationClip;

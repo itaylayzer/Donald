@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import * as THREE from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
@@ -11,6 +11,58 @@ type CustomLight = {
     rot?: THREE.Euler;
     type: "point" | "directional" | "ambient";
 };
+
+export default function () {
+    const [pId, setPId] = useState<undefined | number | ((v: number) => void)>(() => (v: number) => {
+        if (v < 0) {
+            alert("error");
+        } else {
+            setPId(v);
+        }
+    });
+    const inpRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        console.log("starting");
+    }, []);
+    return (
+        <>
+            {typeof pId === "number" ? (
+                <App volume={pId} />
+            ) : (
+                <article>
+                    <main>
+                        {typeof pId === "function" ? (
+                            <>
+                                <h5>please ajust master volume before continue</h5>
+                                <input
+                                    defaultValue={100}
+                                    style={{ width: "80%", height: "3px" }}
+                                    ref={inpRef}
+                                    type="range"
+                                    step={1}
+                                    min={0}
+                                    max={100}
+                                />
+                                <br />{" "}
+                                <button
+                                    style={{ marginTop: 20 }}
+                                    onClick={() => {
+                                        pId(inpRef.current ? inpRef.current.valueAsNumber : -1);
+                                    }}
+                                >
+                                    Finished
+                                </button>
+                            </>
+                        ) : (
+                            <p>{typeof pId}</p>
+                        )}
+                    </main>
+                </article>
+            )}
+            <Mark />
+        </>
+    );
+}
 
 function Intro() {
     const [pvalue, SetProgress] = useState<number>(0);
@@ -240,6 +292,7 @@ function Intro() {
                                 <div className="Menu">
                                     <h3 style={{ fontSize: 60, left: "30%" }}>Lets Play</h3>
                                     <button
+                                        disabled
                                         style={{ backgroundImage: "url('raceb.png')" }}
                                         onClick={() => {
                                             if (document.location.search.length > 0) {
@@ -253,12 +306,16 @@ function Intro() {
                                     <button disabled style={{ backgroundImage: "url('party.png')" }}>
                                         Donald Party
                                     </button>
-                                    <button style={{ backgroundImage: "url('donald.png')" }} onClick={() => {
+                                    <button
+                                        style={{ backgroundImage: "url('donald.png')" }}
+                                        disabled
+                                        onClick={() => {
                                             if (document.location.search.length > 0) {
                                                 const s = document.location.search;
                                                 document.location.href = document.location.href.replace(s, "") + `Mii${s}`;
                                             } else document.location.pathname += "Mii";
-                                        }}>
+                                        }}
+                                    >
                                         Donald Mii
                                     </button>
                                 </div>
@@ -280,78 +337,80 @@ function Intro() {
     );
 }
 
-function App() {
+function App({ volume }: { volume: number }) {
     const [pId, setPId] = useState<number>(0);
-    const waitTime = 5000; // 10 seconds in milliseconds
-    const maxPId = 3; // Set your desired maximum value for pId here
-    const buttonRef = React.useRef<HTMLButtonElement>(null);
+    const waitTime = 5000; // 5 seconds in milliseconds
+    const maxPId = 2; // Set your desired maximum value for pId here
 
     useEffect(() => {
-        if (buttonRef.current)
-            buttonRef.current.onclick = () => {
-                if (buttonRef.current) {
-                    buttonRef.current.style.animation = "fade-out 0.5s ease .5s, scale-out .8s cubic-bezier(.43,-0.01,1,-0.34) .2s";
-                    buttonRef.current.style.cursor = "wait";
+        // button click audio
+        const clickOST = new Audio("sounds/futuristic-press.mp3");
+        clickOST.volume = volume / 100;
+        clickOST.currentTime = 0.22;
+        clickOST.loop = false;
+        clickOST.play();
+        const windOST = new Audio("sounds/wind.mp3");
+        windOST.volume = volume / 100;
+        windOST.loop = true;
+        windOST.play();
+        const cookieName = `firstTime`;
+
+        const hasReset = new URLSearchParams(document.location.search).has("reset");
+        if (hasReset) {
+            CookieManager.set(cookieName, "false");
+        }
+
+        const firstUse = !CookieManager.has(cookieName) || (CookieManager.has(cookieName) && CookieManager.getTyped<boolean>(cookieName) === false);
+        if (!firstUse) {
+            setPId(maxPId);
+            return;
+        }
+        let timerId: number;
+        let PID = 0;
+        setPId(PID);
+        const handleKeyPress = (event: KeyboardEvent) => {
+            if (event.key === "Enter" || event.key === " ") {
+                PID++;
+                console.log("enterPid", PID);
+                setPId(PID);
+
+                if (PID === maxPId) {
+                    setPId(maxPId);
+                    CookieManager.set(cookieName, "true");
+                    document.removeEventListener("keydown", handleKeyPress);
+                    clearTimeout(timerId);
+                } else {
+                    clearTimeout(timerId);
+                    startNewTimer();
                 }
-                // button click audio
-                const clickOST = new Audio("sounds/futuristic-press.mp3");
-                clickOST.currentTime = 0.27;
-                clickOST.play();
-                setTimeout(() => {
-                    const windOST = new Audio("sounds/wind.mp3");
-                    windOST.play();
-                    const cookieName = `firstTime`;
+            }
+        };
 
-                    const hasReset = new URLSearchParams(document.location.search).has("reset");
-                    if (hasReset) {
-                        CookieManager.set(cookieName, "false");
-                    }
+        const startNewTimer = () => {
+            timerId = setTimeout(() => {
+                PID++;
+                console.log("timerPid", PID);
+                setPId(PID);
 
-                    const firstUse =
-                        !CookieManager.has(cookieName) || (CookieManager.has(cookieName) && CookieManager.getTyped<boolean>(cookieName) === false);
-                    if (!firstUse) {
-                        setPId(maxPId);
-                        return;
-                    }
-                    let timerId: number;
-                    let PID = 1;
-                    setPId(PID);
-                    const handleKeyPress = (event: KeyboardEvent) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                            PID++;
-                            if (PID === maxPId) {
-                                setPId(maxPId);
-                                CookieManager.set(cookieName, "true");
-                                document.removeEventListener("keydown", handleKeyPress);
-                            } else setPId(PID);
-                            clearTimeout(timerId);
-                            startNewTimer();
-                        }
-                    };
+                if (PID === maxPId) {
+                    setPId(maxPId);
+                    CookieManager.set(cookieName, "true");
+                    document.removeEventListener("keydown", handleKeyPress);
+                } else {
+                    startNewTimer();
+                }
+            }, waitTime);
+        };
 
-                    const startNewTimer = () => {
-                        timerId = setTimeout(() => {
-                            PID++;
-                            if (PID === maxPId) {
-                                setPId(maxPId);
-                                CookieManager.set(cookieName, "true");
-                                document.removeEventListener("keydown", handleKeyPress);
-                            } else setPId(PID);
-                            startNewTimer();
-                        }, waitTime);
-                    };
+        document.addEventListener("keydown", handleKeyPress);
 
-                    document.addEventListener("keydown", handleKeyPress);
+        startNewTimer(); // Start the initial timer
 
-                    startNewTimer(); // Start the initial timer
-
-                    return () => {
-                        document.removeEventListener("keydown", handleKeyPress);
-                        clearTimeout(timerId); // Clean up the timer on component unmount
-                    };
-                }, 1000);
-            };
-    }, [buttonRef]);
+        return () => {
+            document.removeEventListener("keydown", handleKeyPress);
+            clearTimeout(timerId); // Clean up the timer on component unmount
+        };
+    }, []);
 
     return (
         <>
@@ -361,15 +420,11 @@ function App() {
                 <article>
                     <main style={{ animation: "fade-in 1s cubic-bezier(.3,0,.3,1)" }} key={pId}>
                         {pId === 0 ? (
-                            <button ref={buttonRef} className="s1">
-                                Donald
-                            </button>
-                        ) : pId === 1 ? (
                             <>
                                 <h3>Donald failed asleep</h3>
                                 <h4>waiting for Someone who forgot him.</h4>
                             </>
-                        ) : pId === 2 ? (
+                        ) : pId === 1 ? (
                             <>
                                 <h2>This site uses Cookies</h2>
                                 <p>we wont gather any password or emails</p>
@@ -384,5 +439,3 @@ function App() {
         </>
     );
 }
-
-export default App;

@@ -125,6 +125,7 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
                 }
             }
             PointerMesh.meshes
+            // @ts-ignore
                 .filter((v, i) => i !== minIndex)
                 .forEach((element) => {
                     element.setHover(false);
