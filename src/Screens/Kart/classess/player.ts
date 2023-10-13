@@ -39,7 +39,8 @@ export class Player {
         this.roundable = false;
         this.rounds = 0;
 
-        const material = new THREE.MeshStandardMaterial({ color: "red" });
+        const material = new THREE.MeshStandardMaterial({ color: "red",toneMapped: false,
+        emissive: "red", emissiveIntensity:10 });
         const car = Player.carMesh.car.clone();
         car.scale.multiplyScalar(0.005);
         const player = SkeletonUtils.clone(Player.carMesh.player);

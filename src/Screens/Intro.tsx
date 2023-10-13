@@ -292,7 +292,7 @@ function Intro() {
                                 <div className="Menu">
                                     <h3 style={{ fontSize: 60, left: "30%" }}>Lets Play</h3>
                                     <button
-                                        disabled
+                                        
                                         style={{ backgroundImage: "url('raceb.png')" }}
                                         onClick={() => {
                                             if (document.location.search.length > 0) {
@@ -308,7 +308,7 @@ function Intro() {
                                     </button>
                                     <button
                                         style={{ backgroundImage: "url('donald.png')" }}
-                                        disabled
+                                        
                                         onClick={() => {
                                             if (document.location.search.length > 0) {
                                                 const s = document.location.search;

@@ -254,7 +254,15 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
 
                 xchars[1].mixer.update(deltaTime * 0.33);
                 xchars[1].update();
-                if (xchars[1].pointer.hover || currentName === xchars[1].name) bone?.lookAt(new THREE.Vector3().unproject(camera));
+                if (xchars[1].pointer.hover || currentName === xchars[1].name) {
+                    if (!bone) continue;
+                    const oldQuaternion = bone.quaternion.clone();
+                    bone.lookAt(new THREE.Vector3().unproject(camera));
+                    const newQuaternion = bone.quaternion.clone();
+                    bone.quaternion.copy(oldQuaternion);
+                    bone.quaternion.copy(bone.quaternion.slerp(newQuaternion, 0.5));
+
+                };
             }
         }
 
@@ -283,14 +291,16 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
     //         console.error(r);
     //     });
     // }
+    let il = 0;
     PromiseLoop(()=>{
-        return characters.add(`ayo ${0}`, {
-            glassess: 2,
+        return characters.add(`ayo ${il}`, {
+            glassess: 3,
             eyes: false,
             hair: false,
             mouth: false,
         })
     },10, (i)=>{
+        il++;
         console.log(i);
     });
 

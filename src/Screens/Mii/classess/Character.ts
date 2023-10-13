@@ -46,7 +46,7 @@ export class CharactersList {
         const xchar = new Character(name, clone(this.staticMesh), {
             animation: this.starterAnimation,
         });
-
+        console.log("character list","add:",name)
         if (properties) {
             const result = await ComplexMesh.load(xchar.mesh, properties);
             xchar.update = result.update;
@@ -123,10 +123,10 @@ export class ComplexMesh {
     public static load(object: THREE.Object3D, properties: CookieCharacter) {
         const folderLocation = "fbx/char";
         const propToBone: { [key: string]: string } = {
-            eyes: "mixamorigHead",
+            eyes: "Nose",
             hair: "mixamorigHead",
-            mouth: "mixamorigHead",
-            glassess: "mixamorigHeadTop_End",
+            mouth: "Mouth",
+            glassess: "Nose",
         };
         const propDiff: { [key: string]: THREE.Vector3 } = {
             glassess:

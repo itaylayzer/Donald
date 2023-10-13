@@ -17,9 +17,7 @@ without those assets the game wasn't exists
 1. Models Credits
     1. [Donald Model](https://sketchfab.com/3d-models/base-mesh-low-poly-character-84cd6685487949bca626bcfc244d) - @YOPN 2e12
     2. [Motorcycle Model](https://sketchfab.com/3d-models/low-poly-motorcycle-4fc3500e04b14e73b942d85bc948c5e9) - @matisosanimation 
-2. Music Credits
-    1. Main Menu - [2022](https://youtu.be/jCia_eCW4ps?si=qh3TvEEyyrB6aM1F) @K.Shiraki
-    2. Selection Menu - [Cheerful Girl](https://youtu.be/sPgXN2Ficso?si=Hl7dbmpIitaRj7Xv) @K.Shiraki
+2. Music Credits:
 3. Sprites Credits:
     1. [Monkey Icon](https://game-icons.net/1x1/lorc/monkey.html)
     2. [Evolution Icon](https://thenounproject.com/browse/icons/term/evolution/)

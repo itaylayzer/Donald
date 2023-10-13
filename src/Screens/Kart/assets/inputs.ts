@@ -16,4 +16,5 @@ export const meshes = {
     ground: "textures/bricks500x500x2.png",
     stop: "fbx/stop.fbx",
     wheel: "fbx/wheel.fbx",
+    city:"gltf/maps/xmap-ciity.gltf"
 };

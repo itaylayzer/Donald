@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
 import { Socket } from "../assets/socket.io";
-import { QuaternionToQuat, RotToQuat, TWWEENS, Vec3ToVector3, Vector3ToVec3 } from "../assets/functions";
+import { QuaternionToQuat, RotToQuat, TWWEENS, Vec3ToVector3, Vector3ToVec3, frameLoopTask } from "../assets/functions";
 import CannonDebugger from "../utils/cannonDebugRenderer";
 import { lerp } from "three/src/math/MathUtils.js";
 import { Player } from "../classess/player";
@@ -15,6 +15,13 @@ import { MapCurve } from "../classess/mapCurve";
 import { PlayerMovement } from "../classess/movement";
 import { loadedAssets } from "#Donald/assets/AssetLoader";
 import { PredictedMovement } from "../classess/predicted";
+
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+
 export default function Game({
     socket,
     log,
@@ -64,7 +71,8 @@ export default function Game({
     camera.lookAt(0, 0, 0);
     const spherical = new THREE.Spherical(6, Math.PI, 0);
     scene.background = new THREE.Color("white");
-    scene.fog = new THREE.Fog("white", 20, 100);
+    // scene.fog = new THREE.Fog("white", 20, 100);
+    const composer = new EffectComposer(renderer);
 
     const world = new CANNON.World({
         gravity: new CANNON.Vec3(0, -50, 0),
@@ -258,6 +266,40 @@ export default function Game({
             });
             world.addBody(winningBody);
             scene.add(winningMesh);
+        }
+
+        try {
+            console.log("city", assets.gltf.city.scene.children);
+            const city = assets.gltf.city.scene;
+            // city.position.add(new THREE.Vector3(0,77,10));
+            globalThis.city = city;
+
+            const sun = city.getObjectByName("Sun");
+            if (sun && sun.type == "Mesh") {
+                const meshSun = sun as THREE.Mesh;
+                if (meshSun.material as THREE.MeshStandardMaterial) {
+                    (meshSun.material as THREE.MeshStandardMaterial).emissive = (meshSun.material as THREE.MeshStandardMaterial).color;
+                    (meshSun.material as THREE.MeshStandardMaterial).emissiveIntensity = 10000;
+
+                    globalThis.sun = meshSun;
+                }
+            }
+            frameLoopTask(() => {
+                return city.children.length !== 0;
+            }).then(() => {
+                console.log("after frameLoop for city.children", city.children);
+                for (const x of city.children) {
+                    if (x as THREE.Mesh) {
+                        if ((x as THREE.Mesh).material as THREE.MeshStandardMaterial) {
+                            // ((x as THREE.Mesh).material as THREE.MeshStandardMaterial).color.multiplyScalar(255);
+                            console.log(x.name, ((x as THREE.Mesh).material as THREE.MeshStandardMaterial).color, (x as THREE.Mesh).material);
+                        }
+                    }
+                }
+                scene.add(...city.children);
+            });
+        } catch (r) {
+            console.error(r);
         }
 
         // const groundMesh = new THREE.Mesh(new THREE.BoxGeometry(200, 0.4, 200), material);
@@ -454,12 +496,21 @@ export default function Game({
             },
         ]);
     }
+    function _composerPasses() {
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.2, 1, 1);
+
+        composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(bloomPass);
+        const copyPass = new ShaderPass(CopyShader);
+        copyPass.renderToScreen = true;
+        composer.addPass(copyPass);
+    }
 
     _createGround();
     _loadMesh();
     _windowEvents();
     _createLights();
-
+    _composerPasses();
     const localPlayer = new Player(socket !== null ? socket.id : "", true, {
         effect: (s) => {
             socket?.emit("ae", { p: s, e: 3 });
@@ -865,10 +916,10 @@ export default function Game({
             vel: localPlayer.body.velocity.toArray(),
         });
     }
-    function _predictOnlineMovement(){
-        Array.from(PredictedMovement.list.values()).forEach((e)=>{
+    function _predictOnlineMovement() {
+        Array.from(PredictedMovement.list.values()).forEach((e) => {
             e.localUpdate();
-        })
+        });
     }
 
     const animate = () => {
@@ -898,7 +949,8 @@ export default function Game({
         // setPOS(localPlayer.position);
 
         world.step(fps < 10 ? 1 / 60 : deltaTime);
-        renderer.render(scene, camera);
+        // renderer.render(scene, camera);
+        composer.render();
     };
 
     renderer.setAnimationLoop(animate);

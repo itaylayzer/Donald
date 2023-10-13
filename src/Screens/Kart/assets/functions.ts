@@ -210,3 +210,15 @@ export function project(v: CANNON.Vec3, projectedTo: CANNON.Vec3): CANNON.Vec3 {
 
     return projectedToClone.scale(scaleFactor);
 }
+
+export function frameLoopTask(task:()=>boolean):Promise<void>{
+   return new Promise<void>((resolve)=>{
+    function taskLoop(){
+
+        const returned = task();
+        if (! returned)  requestAnimationFrame(taskLoop);
+        else resolve();
+    }
+    requestAnimationFrame(taskLoop);
+   })
+}

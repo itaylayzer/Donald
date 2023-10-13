@@ -63,7 +63,7 @@ function Loading() {
     useEffect(() => {
         loadMeshes(
             {
-                player: "fbx/endy-rigged.fbx",
+                player: "fbx/endy-rigged-extra.fbx",
                 idle: "fbx/animations/happy-idle.fbx",
                 texture: "textures/bricks500x500x2.png",
             },
