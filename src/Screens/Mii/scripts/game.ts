@@ -2,18 +2,30 @@ import { loadedAssets } from "#Donald/assets/AssetLoader";
 import { CustomLight } from "../../Kart/assets/types";
 import * as THREE from "three";
 import { PointerMesh } from "../classess/PointerMesh";
-import { CharactersList } from "../classess/Character";
+import { CharactersList } from "../classess/characterList";
 import { findBoneByName } from "../assets/functions";
 import { Random } from "#Donald/Screens/Kart/assets/functions";
-import { lerp } from "three/src/math/MathUtils.js";
+import { Player } from "../classess/Player";
+import { CameraControl } from "../classess/cameraController";
 
-export type GameReturns = {
-    SetINDEX: (v: number) => void;
-    maxINDEX: number;
-    addCharacter: (name: string) => void;
+export type GameReturns = {};
+
+export type Actions = {
+    [key: string]:
+        | {
+              action: () => void;
+              available: () => boolean;
+          }
+        | (() => void);
 };
 
-export default function ({ assets }: { assets: loadedAssets }): GameReturns {
+const GameStates = {
+    Flying: 0,
+    Editor: 1,
+    Play: 2,
+};
+
+export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTIONS: React.Dispatch<React.SetStateAction<Actions>> }): GameReturns {
     // @ts-ignore
     globalThis.glassess = new THREE.Vector3();
     const container = document.querySelector("div.gameContainer") as HTMLDivElement;
@@ -23,15 +35,24 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog("white", 10, 40);
+    scene.fog = new THREE.Fog("white", 50, 100);
     scene.background = new THREE.Color("white");
 
-    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 30);
-    const cameraPosition = new THREE.Vector3(0, 10, 10);
+    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 10000);
     camera.position.set(0, 1, 6).multiplyScalar(2);
 
     const raycaster = new THREE.Raycaster();
 
+    Player.animationsPack = {
+        idle: assets.fbx.pidle.animations[0],
+        walking: assets.fbx.pwalk.animations[0],
+        running: assets.fbx.prun.animations[0],
+    };
+
+    let currentName = "";
+    let currentState = GameStates.Flying;
+    let currentPlayer: Player | null = null;
+    const cameraController = new CameraControl(camera);
     const characters = new CharactersList(assets.fbx.player, {
         add: (c) => {
             c.mesh.castShadow = true;
@@ -45,11 +66,44 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
             c.pointer.onClick = () => {
                 if (characters.has(currentName)) return;
                 currentName = c.name;
+                currentState = GameStates.Editor;
+                document.exitPointerLock();
+                SetACTIONS({
+                    edit: () => {},
+                    clone: () => {},
+                    play: () => {
+                        currentState = GameStates.Play;
+                        renderer.domElement.requestPointerLock();
+
+                        currentPlayer = new Player(c);
+                        SetACTIONS({
+                            quit: () => {
+                                currentState = GameStates.Flying;
+                                SetACTIONS(globalActions.normal);
+                                currentName = "";
+                                _documentEvents();
+                                currentPlayer?.destroy();
+                                currentPlayer = null;
+                            },
+                        });
+                        // Build The Play Scene!
+                    },
+                    remove: () => {
+                        characters.remove(c.name);
+                        SetACTIONS(globalActions.normal);
+                        currentState = GameStates.Flying;
+                    },
+                    back: () => {
+                        currentName = "";
+                        currentState = GameStates.Flying;
+                        SetACTIONS(globalActions.normal);
+                    },
+                });
             };
             scene.add(c.mesh);
         },
         remove: (c) => {
-            scene.remove(c.mesh);
+            scene.remove(c);
         },
         addProp(p) {
             p.scale.multiplyScalar(0.01);
@@ -58,7 +112,34 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
         animation: assets.fbx.idle.animations[0],
     });
 
-    let currentName = "";
+    function requestName():string{
+        const name = prompt("Enter Character Name:");
+        if (name === null){
+            alert("Empty String was Detected");
+            return requestName();
+        }
+        if (characters.has(name)){
+            alert("Name Already Exists");
+            return requestName();
+        }
+        return name;
+    }
+
+    const globalActions = {
+        normal: {
+            add: () => {
+                const name = requestName();
+                characters.add(name);
+            },
+            deleteAll: {
+                action: () => {
+                    characters.removeAll();
+                },
+                available: () => characters.count > 0,
+            },
+        },
+    } as { [key: string]: Actions };
+    SetACTIONS(globalActions.normal);
 
     const keyHandlers = {
         pressing: {},
@@ -66,15 +147,13 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
         down: {
             Backspace: () => {
                 currentName = "";
+                currentState = GameStates.Flying;
+                SetACTIONS(globalActions.normal);
             },
         },
     };
     const keysDown = new Set<string>();
-    const keysAxis = {
-        horizontal: 0,
-        vertical: 0,
-    };
-    const keysAxisRaw = { horizontal: 0, vertical: 0 };
+
     function _createGround() {
         var texture = assets.textures.texture.clone();
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -125,7 +204,7 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
                 }
             }
             PointerMesh.meshes
-            // @ts-ignore
+                // @ts-ignore
                 .filter((v, i) => i !== minIndex)
                 .forEach((element) => {
                     element.setHover(false);
@@ -135,16 +214,37 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
                 if (!characters.has(currentName)) document.body.style.cursor = "pointer";
                 PointerMesh.meshes[minIndex].setHover(true);
             }
+            currentPlayer?.mouseMovement(event.movementX);
+            if (currentState !== GameStates.Play) {
+                cameraController.mouseMovement(event.movementX, event.movementY);
+            }
         });
         document.onclick = (event) => {
             const mouse = new THREE.Vector2((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
             raycaster.setFromCamera(mouse, camera);
-
-            PointerMesh.meshes
-                .filter((v) => v.hover)
-                .forEach((element) => {
+            console.log(document.activeElement?.tagName);
+            const l = PointerMesh.meshes.filter((v) => v.hover);
+            if (l.length === 0) {
+                if (currentState === GameStates.Play) renderer.domElement.requestPointerLock();
+            } else {
+                l.forEach((element) => {
                     element.onClick();
                 });
+            }
+        };
+
+        document.onmousedown = (event) => {
+            if (currentState === GameStates.Flying && event.button === 2) {
+                renderer.domElement.requestPointerLock();
+                cameraController.down = true;
+            }
+        };
+        document.onmouseup = () => {
+            cameraController.down = false;
+            if (currentState === GameStates.Flying) document.exitPointerLock();
+        };
+        document.oncontextmenu = (event) => {
+            event.preventDefault();
         };
 
         window.addEventListener(
@@ -159,7 +259,7 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
         );
         document.addEventListener("keydown", (e) => {
             if (e.code === "KeyN") {
-                const name = prompt("Enter Name") as string;
+                const name = requestName();
                 characters.add(name);
             }
         });
@@ -216,58 +316,35 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
     _documentEvents();
     _createLights();
 
-    cameraPosition.set(0, 9, 10);
-    const cameraRotation = new THREE.Euler();
     const clock = new THREE.Clock();
     const animate = () => {
         const deltaTime = clock.getDelta();
 
-        function _keyAxisHandle() {
-            keysAxisRaw.horizontal = keysDown.has("KeyD") && keysDown.has("KeyA") ? 0 : keysDown.has("KeyD") ? 1 : keysDown.has("KeyA") ? -1 : 0;
-            keysAxisRaw.vertical = keysDown.has("KeyW") && keysDown.has("KeyS") ? 0 : keysDown.has("KeyW") ? 1 : keysDown.has("KeyS") ? -1 : 0;
-            for (const key in Object.keys(keysAxis)) {
-                const k = Object.keys(keysAxis)[key] as "horizontal" | "vertical";
-
-                keysAxis[k] = lerp(keysAxis[k], keysAxisRaw[k], deltaTime * 3);
-            }
-        }
-        function _cameraMovement() {
-            if (currentName.length > 0 && characters.has(currentName)) {
-                cameraRotation.x = -0.3;
-                cameraRotation.z = 0;
-                cameraRotation.y = 0;
-                cameraPosition.lerp(characters.getForced(currentName).position.clone().add(new THREE.Vector3(2, 3, 3)), deltaTime * 5);
+        function _movement() {
+            if (currentState === GameStates.Play) {
+                currentPlayer?.update(deltaTime, camera, keysDown);
             } else {
-                cameraPosition.add(new THREE.Vector3(keysAxis.horizontal, 0, -keysAxis.vertical).multiplyScalar(deltaTime * 20));
-                cameraPosition.setY(lerp(cameraPosition.y, 11, deltaTime * 5));
-                cameraRotation.x = -0.7 + -keysAxisRaw.vertical * 0.05;
-                cameraRotation.z = -keysAxisRaw.horizontal * 0.05;
+                cameraController.update(
+                    deltaTime,
+                    currentName.length > 0 && characters.has(currentName) ? characters.getForced(currentName).position.clone() : undefined,
+                    keysDown
+                );
             }
-            camera.quaternion.slerp(new THREE.Quaternion().setFromEuler(cameraRotation), deltaTime * 2);
-            // @ts-ignore
-            globalThis.camera = camera;
-            camera.position.lerp(cameraPosition, deltaTime * 5);
         }
         function _updateCharacters() {
             for (const xchars of Array.from(characters.list.entries())) {
                 const bone = findBoneByName(xchars[1].mesh, "mixamorigHead");
-
-                xchars[1].mixer.update(deltaTime * 0.33);
+                xchars[1].mixer.update(deltaTime * 1);
                 xchars[1].update();
-                if (xchars[1].pointer.hover || currentName === xchars[1].name) {
-                    if (!bone) continue;
-                    const oldQuaternion = bone.quaternion.clone();
-                    bone.lookAt(new THREE.Vector3().unproject(camera));
-                    const newQuaternion = bone.quaternion.clone();
-                    bone.quaternion.copy(oldQuaternion);
-                    bone.quaternion.copy(bone.quaternion.slerp(newQuaternion, 0.5));
 
-                };
+                if (xchars[1].pointer.hover) {
+                    if (!bone) continue;
+                    // bone.lookAt(new THREE.Vector3().unproject(camera));
+                }
             }
         }
 
-        _keyAxisHandle();
-        _cameraMovement();
+        _movement();
         _updateCharacters();
 
         renderer.render(scene, camera);
@@ -275,43 +352,38 @@ export default function ({ assets }: { assets: loadedAssets }): GameReturns {
 
     renderer.setAnimationLoop(animate);
 
-    function PromiseLoop(f:()=>Promise<any>, i:number,any:(i:number)=>void){
-        if (i <= 0) return;
-        f().then(()=>{
-            any(i);
-            PromiseLoop(f,i-1, any);
-        })
+    function PromiseLoop(f: () => Promise<any>, i: number, callback?: (i: number) => void): Promise<void> {
+        if (i > 0) {
+            return f().then(() => {
+                callback?.(i);
+                return PromiseLoop(f, i - 1, callback);
+            });
+        } else {
+            return Promise.resolve(); // Return a resolved promise when i <= 0
+        }
     }
     // for (var i = 0; i < 10; i++) {
     //     const d = i;
     //     .then((v)=>{
-            
+
     //         console.log(d,v.mesh.id);
     //     }).catch(r=>{
     //         console.error(r);
     //     });
     // }
-    let il = 0;
-    PromiseLoop(()=>{
-        return characters.add(`ayo ${il}`, {
-            glassess: 3,
+
+    PromiseLoop(() => {
+        return characters.add(Random.int(0, 1000) + `ayo` + Random.int(0, 1000).toString(), {
+            glassess: 4,
             eyes: false,
-            hair: false,
+            hair: 1,
             mouth: false,
-        })
-    },10, (i)=>{
-        il++;
-        console.log(i);
+        });
+    }, 3).then(() => {
+        requestAnimationFrame(() => {
+            SetACTIONS(globalActions.normal);
+        });
     });
 
-    return {
-        SetINDEX(v) {
-            if (v >= 0 && v < characters.count) {
-            }
-        },
-        maxINDEX: characters.count - 1,
-        addCharacter(name) {
-            characters.add(name);
-        },
-    };
+    return {};
 }

@@ -1,51 +1,42 @@
 div.gameUI div.actions {
     position: absolute;
-    bottom: 10%;
-    left: 50%;
-    translate: -50%;
-    background-color: rgb(17, 93, 255);
-    padding: 0px 25px;
+    top: 50px;
+    left: 20px;
+    
     display: flex;
+    flex-direction: column;
+    padding: 0px 25px;
     gap: 10px;
     border-radius: 8px;
 }
 
 div.gameUI div.actions button {
+    display: block;
+    background-color: rgb(255,255,255,0%);
+    filter:drop-shadow(0px 0px 1px black) drop-shadow(0px 0px 3px white) drop-shadow(0px 0px 3px white) drop-shadow(0px 0px 3px white) drop-shadow(0px 0px 3px white) ;
     cursor: pointer;
     margin: 0px;
     padding: 0px;
-    background-color: rgb(0, 0, 0, 0);
-    color: white;
+    color: black;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     border: 0;
     outline: 0;
     font-size: 25px;
-    text-align: center;
+    text-align: left;
     /* border-right:1px solid white; */
     opacity: 0.8;
-    border-radius: 8px;
+    border-radius: 3px;
     padding: 8px 20px;
-    transition: scale .5s cubic-bezier(.13, 1.43, .53, 1), opacity .5s cubic-bezier(.13, 1.43, .53, 1);
+    transition: translate .5s cubic-bezier(.13, 1.43, .53, 1), scale .5s cubic-bezier(.13, 1.43, .53, 1),  opacity .5s cubic-bezier(.13, 1.43, .53, 1);
 }
 
-div.gameUI div.actions hr {
-    position: relative;
-    margin: 0;
-    border: 0;
-    outline: 0;
-    border: 1px solid white;
-    scale: 1.4 1;
-    border-radius: 1000px;
-    opacity: 0.5;
-    margin-block: 8px;
-}
 
 div.gameUI div.actions button:nth-last-child(1) {
     border-right: 0;
 }
 
 div.gameUI div.actions button:hover {
-    scale: 0.88;
+    translate: 10px;
     opacity: 0.9;
 }
 
@@ -68,53 +59,3 @@ div.gameUI div.right-center {
     translate: 0% -50%;
 }
 
-
-div.gameUI div.right-center button,
-div.gameUI div.left-center button {
-    aspect-ratio: 1;
-    padding: 0;
-    margin: 0;
-    background-color: rgb(0, 0, 0, 0);
-    border: 0;
-    outline: 0;
-    color: rgb(17, 93, 255);
-    font-weight: 900;
-    cursor: pointer;
-    font-family: monospace;
-    font-size: 75px;
-    text-align: center;
-    scale: 1.2;
-    opacity: 0.5;
-    user-select: none;
-    transition: scale .3s cubic-bezier(.13, 1.43, .53, 1), opacity .1s, text-shadow .3s cubic-bezier(.13, 1.43, .53, 1);
-}
-
-div.gameUI div.left-center button:hover {
-    text-shadow: 20px 0px rgb(17, 93, 255, 25%), 40px 0px rgb(17, 93, 255, 6.25%);
-
-}
-
-div.gameUI div.right-center button:hover {
-    text-shadow: -20px 0px rgb(17, 93, 255, 25%), -40px 0px rgb(17, 93, 255, 6.25%);
-
-}
-
-div.gameUI div.right-center button:active {
-   
-    text-shadow: -40px 0px rgb(17, 93, 255, 32.5%), -80px 0px rgb(17, 93, 255, 9.125%);
-}
-div.gameUI div.left-center button:active {
-   
-    text-shadow: 40px 0px rgb(17, 93, 255, 32.5%), 80px 0px rgb(17, 93, 255, 9.125%);
-}
-
-div.gameUI div.right-center button:hover,
-div.gameUI div.left-center button:hover {
-    scale: 1.5;
-    opacity: 0.8;
-}
-div.gameUI div.right-center button:active,
-div.gameUI div.left-center button:active {
-    scale: 1.3;
-    opacity: 1;
-}

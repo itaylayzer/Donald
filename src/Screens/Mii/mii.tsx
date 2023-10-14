@@ -3,53 +3,59 @@ import { CookieManager } from "../../assets/CookieManager";
 import { useEffect, useState } from "react";
 
 import "./index.css";
-import Game, {GameReturns as BrainType} from "./scripts/game";
+import Game, { GameReturns as BrainType, Actions } from "./scripts/game";
 import { loadMeshes, loadedAssets } from "#Donald/assets/AssetLoader";
 
 function Mii({ l }: { l: loadedAssets }) {
+    // @ts-ignore
     const [brain, SetBrain] = useState<BrainType>();
-    
+
     useEffect(() => {
         SetBrain(
             Game({
                 assets: l,
+                SetACTIONS: SetActions,
             })
         );
     }, []);
 
-    
-    const [currentIndex, SetIndex] = useState<number>(0);
+    const [currentActions, SetActions] = useState<Actions>({});
 
-    function UpdateIndex(x: number) {
-        const _newIndex =Math.max( Math.min((brain?.maxINDEX??0),x),0);
-        SetIndex(_newIndex);
-        brain?.SetINDEX(_newIndex);
+    function DisplayActions({ actions }: { actions: Actions }) {
+        function fixString(text: string) {
+            const result = text.replace(/([A-Z])/g, " $1");
+
+            // Convert the first character to lowercase
+            return result.charAt(0).toUpperCase() + result.slice(1);
+        }
+        return (
+            <>
+                {Object.entries(actions).map((v) =>
+                    (typeof v[1] === "object" && v[1].available()) || typeof v[1] === "function" ? (
+                        <button
+                            onClick={() => {
+                                if (typeof v[1] === "function") {
+                                    v[1]();
+                                } else {
+                                    v[1].action();
+                                }
+                            }}
+                        >
+                            {fixString(v[0])}
+                        </button>
+                    ) : (
+                        <></>
+                    )
+                )}
+            </>
+        );
     }
+
     return (
         <>
             <div className="gameUI">
-                <div className="right-center">
-                    <button style={currentIndex == brain?.maxINDEX ? {display:"none"} : {}}
-                        onClick={() => {
-                            UpdateIndex(currentIndex + 1);
-                        }}
-                    >
-                        {">"}
-                    </button>
-                </div>
-                <div className="left-center">
-                    <button style={currentIndex == 0 ? {display:"none"} : {}}
-                        onClick={() => {
-                            UpdateIndex(currentIndex - 1);
-                        }}
-                    >
-                        {"<"}
-                    </button>
-                </div>
                 <div className="actions">
-                    <button>Edit</button>
-                    <hr />
-                    <button>Remove</button>
+                    <DisplayActions actions={currentActions} />
                 </div>
             </div>
             <div className="gameContainer"></div>
@@ -66,6 +72,9 @@ function Loading() {
                 player: "fbx/endy-rigged-extra.fbx",
                 idle: "fbx/animations/happy-idle.fbx",
                 texture: "textures/bricks500x500x2.png",
+                pidle: "fbx/animations/idle.fbx",
+                pwalk: "fbx/animations/walking.fbx",
+                prun: "fbx/animations/running.fbx",
             },
             SetProgress
         )

@@ -26,4 +26,7 @@ export class PointerMesh {
         }
         this.hover = newHover;
     }
+    public destroy(){
+        PointerMesh.meshes = PointerMesh.meshes.filter(v=>v.mesh.id !== this.mesh.id);
+    }
 }
