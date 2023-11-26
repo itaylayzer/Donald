@@ -5,7 +5,7 @@ export default function () {
                 document.location.href = "/";
             }}
         >
-            @Coder-1t45 | 26.10.23
+            @Coder-1t45 | 26.11.23
         </footer>
     );
 }
