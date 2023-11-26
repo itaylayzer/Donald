@@ -49,17 +49,16 @@ export class ComplexMesh {
                     }
                     function UpdateMesh(meshName: string) {
                         if (keys.includes(meshName)) {
-                            let bone:THREE.Object3D | undefined = findBoneByName(object, propToBone[meshName]);
+                            let bone: THREE.Object3D | undefined = findBoneByName(object, propToBone[meshName]);
                             if (bone) {
                                 const boneMatrix = new THREE.Matrix4();
                                 bone.updateMatrix();
                                 boneMatrix.copy(bone.matrixWorld);
 
-
                                 if (propToFBX[meshName]) {
                                     // console.log(propToFBX[meshName].position);
                                     bone.attach(propToFBX[meshName]);
-        
+
                                     propToFBX[meshName].position.x *= object.scale.x;
                                     propToFBX[meshName].position.y *= object.scale.y;
                                     propToFBX[meshName].position.z *= object.scale.z;

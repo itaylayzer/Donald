@@ -7,16 +7,17 @@ div.gameContainer {
   padding: 0;
   margin: 0;
   z-index: 0;
-  translate:-50% -50%;
+  translate: -50% -50%;
 }
 
-*{
+* {
   -webkit-text-fill-color: unset;
   -webkit-text-stroke-width: unset;
   -webkit-text-stroke-color: unset;
 }
-body{
-  overflow:hidden;
+
+body {
+  overflow: hidden;
 }
 
 
@@ -31,7 +32,7 @@ body{
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: rgb(20,20,20, 50%);
+  background-color: rgb(20, 20, 20, 50%);
   border-radius: 100px;
 }
 
@@ -60,14 +61,15 @@ div.gameUI {
 }
 
 div.gameUI div.Menu {
-  position:absolute;
+  position: absolute;
   width: 400px;
-  top:50%;
+  top: 50%;
   translate: 100px -50%;
-  padding-bottom:100px;
+  padding-bottom: 100px;
 }
-div.gameUI div.Menu h3{
-  margin-top:0;
+
+div.gameUI div.Menu h3 {
+  margin-top: 0;
 }
 
 div.gameUI div.Menu button {
@@ -109,14 +111,14 @@ div.gameUI div.Menu button:active {
 
 div.gameUI div.Menu button:disabled:hover {
   translate: 0px;
-  background-color: rgb(20,20,20, 80%);
+  background-color: rgb(20, 20, 20, 80%);
   cursor: default;
   scale: 0.93;
 }
 
 div.gameUI div.Menu button:disabled::after {
   transition: opacity 0.3s cubic-bezier(0, 0.3, 0.3, 1);
-  content: 'Not Available Yet';
+  content: 'Not Available';
   opacity: 0;
   font-size: 20px;
   padding: 3px 6px;
@@ -138,17 +140,43 @@ div.gameUI div.Menu button:disabled::after {
   color: white;
 }
 
+div.gameUI div.Menu button[data-status]::after {
+  transition: opacity 0.3s cubic-bezier(0, 0.3, 0.3, 1);
+  content: attr(data-status);
+  opacity: 0;
+  font-size: 20px;
+  padding: 3px 6px;
+  color: white;
+  user-select: none;
+  width: max-content;
+  height: max-content;
+  transform: translateY(-100%) translateX(-50%);
+  letter-spacing: normal;
+  z-index: 1200000000;
+  position: absolute;
+  top: -0.25rem;
+  left: 50%;
+  border-radius: 0.5vh;
+  user-select: none;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: black;
+
+  color: white;
+}
+
+div.gameUI div.Menu button[data-status]:hover::after,
 div.gameUI div.Menu button:disabled:hover:after {
   opacity: 1;
 }
 
-article.progress h3{
-  margin:0;
+article.progress h3 {
+  margin: 0;
   font-size: 60px;
   font-weight: 100;
 }
+
 article.progress {
- 
+
   position: absolute;
   top: 50%;
   left: 50%;
@@ -165,18 +193,19 @@ article.progress {
 }
 
 article.progress main div {
-  margin-top:10px;
+  margin-top: 10px;
   display: flex;
   gap: 20px;
-  
+
 }
 
-article.progress main{
+article.progress main {
   opacity: 0.8;
 }
+
 article.progress main * {
   margin-block: auto;
-  
+
 }
 
 footer {
@@ -184,12 +213,19 @@ footer {
   bottom: 10px;
   font-size: 20px;
   filter: drop-shadow(0px 0px 1px black);
-  scale:1.2;
+  scale: 1.2;
   color: white;
   font-weight: 400;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   left: 50%;
   translate: -50% -50%;
+  opacity: 0.8;
+}
+
+footer:hover {
+  opacity: 1;
+  cursor: pointer;
+  z-index: 100;
 }
 
 article.progress progress {
@@ -200,14 +236,17 @@ article.progress progress {
   border-radius: 0px;
   height: 10px;
 }
-article.progress progress::-webkit-progress-value{
-  background-color: rgb(230,230,230);
+
+article.progress progress::-webkit-progress-value {
+  background-color: rgb(230, 230, 230);
   border-radius: 5px;
 }
-article.progress progress::-webkit-progress-bar{
-  background-color: rgb(25,25,25);
+
+article.progress progress::-webkit-progress-bar {
+  background-color: rgb(25, 25, 25);
   border-radius: 5px;
 }
+
 article.progress p {
   display: inline-block;
   font-size: 25px;
@@ -291,101 +330,117 @@ body {
   }
 }
 
-div.slider[data-component]{
-  translate:0px -5px;
+div.slider[data-component] {
+  translate: 0px -5px;
 }
 
-div.slider[data-component] input{
-  translate:0px  1px;
+div.slider[data-component] input {
+  translate: 0px 1px;
 }
 
-article{
-  position:absolute;
-  top:0;
-  left:0;
-  height:100%;
+article {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
   width: 100%;
-  background-color: rgb(12,12,12);
-  
+  background-color: rgb(12, 12, 12);
+
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
+
 @keyframes fade {
-  0%{
+  0% {
     opacity: 0;
   }
-  10%{
+
+  10% {
     opacity: 1;
   }
-  60%{
+
+  60% {
     opacity: 1;
   }
-  100%{
+
+  100% {
     opacity: 0;
   }
 }
+
 @keyframes fade-in {
-  0%{
+  0% {
     opacity: 0;
   }
-  100%{
+
+  100% {
     opacity: 1;
   }
 }
+
 @keyframes fade-out {
-  0%{
+  0% {
     opacity: 1;
   }
-  100%{
+
+  100% {
     opacity: 0;
   }
 }
+
 @keyframes scale-out {
-  0%{
+  0% {
     scale: 1;
   }
-  100%{
+
+  100% {
     scale: 0;
   }
 }
-article main{
+
+article main {
   position: absolute;
-  top:50%;
-  left:50%;
-  translate:-50% -50%;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
   text-align: center;
-  color:white;
+  color: white;
   -webkit-text-fill-color: white;
   -webkit-text-stroke-width: 0px;
   -webkit-text-stroke-color: white;
 }
-article main h3{
+
+article main h3 {
   font-size: 50px;
   margin-bottom: 10px;
-  color:white;
+  color: white;
   -webkit-text-fill-color: white;
   -webkit-text-stroke-width: 0px;
   -webkit-text-stroke-color: white;
 }
-article main h2{
+
+article main h2 {
   font-size: 50px;
   margin-bottom: 10px;
   font-weight: 100;
-  color:white;
+  color: white;
   -webkit-text-fill-color: white;
   -webkit-text-stroke-width: 0px;
   -webkit-text-stroke-color: white;
 }
-article main h1{
+
+article main h1 {
   font-size: 70px;
   font-weight: 100;
-  color:white;
+  color: white;
   -webkit-text-fill-color: white;
   -webkit-text-stroke-width: 0px;
   -webkit-text-stroke-color: white;
 }
-article main p{
+
+article main p {
   font-size: 25px;
-  margin-top:0px;color:white;
+  margin-top: 0px;
+  color: white;
   -webkit-text-fill-color: white;
   -webkit-text-stroke-width: 0px;
   -webkit-text-stroke-color: white;
@@ -393,63 +448,67 @@ article main p{
 }
 
 @keyframes letterSpacing {
-  0%{
+  0% {
     letter-spacing: 0px;
   }
-  100%{
+
+  100% {
     letter-spacing: 5px;
     opacity: 0.5;
   }
 }
-article main h4{
+
+article main h4 {
   font-size: 40px;
-  margin-top:0px;
+  margin-top: 0px;
   font-weight: 100;
-  animation: letterSpacing 5s cubic-bezier(.7,0,1,1);
+  animation: letterSpacing 5s cubic-bezier(.7, 0, 1, 1);
 }
 
-article main h5{
+article main h5 {
   font-size: 40px;
-  margin-bottom:10px;
+  margin-bottom: 10px;
   font-weight: 100;
-  
+
 }
 
-article main button{
-  color:white;
-  background-color: rgb(20,20,20);
-  border:0;
-  outline:0;
-  padding:5px 15px;
+article main button {
+  color: white;
+  background-color: rgb(20, 20, 20);
+  border: 0;
+  outline: 0;
+  padding: 5px 15px;
   font-size: 25px;
   cursor: pointer;
   border-radius: 5px;
 }
 
 
-article main button.s1{
+article main button.s1 {
   font-size: 50px;
-  padding:10px 50px;
-  translate:-8px -8px;
+  padding: 10px 50px;
+  translate: -8px -8px;
   border-radius: 10px;
-  box-shadow: 8px 8px rgb(0,0,0,50%);
+  box-shadow: 8px 8px rgb(0, 0, 0, 50%);
   font-family: monospace;
   text-transform: capitalize;
   letter-spacing: 3px;
 
-  transition:translate .2s cubic-bezier(0,.98,.6,1), box-shadow .2s cubic-bezier(0,.98,.6,1);
+  transition: translate .2s cubic-bezier(0, .98, .6, 1), box-shadow .2s cubic-bezier(0, .98, .6, 1);
 }
-article main button.s1:hover{
+
+article main button.s1:hover {
   font-size: 50px;
-  padding:10px 50px;
-  translate:-5px -5px;
-  box-shadow: 5px 5px rgb(0,0,0,25%);
+  padding: 10px 50px;
+  translate: -5px -5px;
+  box-shadow: 5px 5px rgb(0, 0, 0, 25%);
 
 }
-article main button.s1:active{
+
+article main button.s1:active {
   font-size: 50px;
-  padding:10px 50px;
-  translate:0px 0px;
-  
-  box-shadow: 0px 0px rgb(0,0,0,50%);
+  padding: 10px 50px;
+  translate: 0px 0px;
+
+  box-shadow: 0px 0px rgb(0, 0, 0, 50%);
 }

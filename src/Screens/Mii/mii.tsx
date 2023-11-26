@@ -75,6 +75,7 @@ function Loading() {
                 pidle: "fbx/animations/idle.fbx",
                 pwalk: "fbx/animations/walking.fbx",
                 prun: "fbx/animations/running.fbx",
+                roboto:"fonts/Roboto_Regular.typeface.json"
             },
             SetProgress
         )
@@ -83,7 +84,6 @@ function Loading() {
                 SetAssets(meshes);
             })
             .catch((r: ErrorEvent) => {
-                alert(r.message);
                 console.error(r);
             });
 

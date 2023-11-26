@@ -10,14 +10,14 @@ export class CharactersList {
     private _add: (c: Character) => void;
     // @ts-ignore
     private _remove: (obj: THREE.Object3D) => void;
-    private _addProp: (p: THREE.Group<THREE.Object3DEventMap>) => void;
+    private _addProp: (p: THREE.Object3D) => void;
     public starterAnimation: undefined | THREE.AnimationClip;
     constructor(
-        mesh: THREE.Group<THREE.Object3DEventMap>,
+        mesh: THREE.Object3D,
         args: {
             add: (c: Character) => void;
             remove: (obj: THREE.Object3D) => void;
-            addProp: (p: THREE.Group<THREE.Object3DEventMap>) => void;
+            addProp: (p: THREE.Object3D) => void;
             animation?: THREE.AnimationClip;
         }
     ) {
@@ -27,6 +27,8 @@ export class CharactersList {
         this._remove = args.remove;
         this._addProp = args.addProp;
         this.starterAnimation = args.animation ?? undefined;
+        Character.add = this._addProp;
+        Character.remove = this._remove;
     }
 
     public get(name: string) {
@@ -47,8 +49,9 @@ export class CharactersList {
         });
         if (properties) {
             const result = await ComplexMesh.load(xchar.mesh, properties);
-            xchar.update = result.update;
+            xchar.update.push(result.update);
             xchar.props = result.meshes;
+            xchar.properties = properties;
             for (const x of result.meshes) {
                 this._addProp(x);
             }
@@ -70,8 +73,8 @@ export class CharactersList {
         this.list.delete(name);
     }
 
-    public removeAll(){
-        for(const x of Array.from(this.list.keys())){
+    public removeAll() {
+        for (const x of Array.from(this.list.keys())) {
             this.remove(x);
         }
     }
@@ -90,6 +93,24 @@ export class CharactersList {
         if (xchar === undefined) {
             throw new Error("");
         }
+        return xchar;
+    }
+    public async clone(oldChar: Character, name: string) {
+        const xchar = new Character(name, clone(this.staticMesh),  {
+            animation: this.starterAnimation,
+        });
+
+        if (oldChar.properties) {
+            xchar.properties = oldChar.properties;
+            const result = await ComplexMesh.load(xchar.mesh, xchar.properties);
+            xchar.update.push(result.update);
+            xchar.props = result.meshes;
+            for (const x of result.meshes) {
+                this._addProp(x);
+            }
+        }
+        this._add(xchar);
+        this.list.set(name, xchar);
         return xchar;
     }
 }

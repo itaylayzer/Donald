@@ -1,5 +1,11 @@
 # Donald Games - IO Games Series ****IN DEVELOPMENT****
+### 26.11.23: Development has bein paused due to collage. 
+the games are open to demo states.
+
 ### Donald is Sleeping, Waiting for you to Wake him Up
+
+
+
 
 Donald Games will include alot of developed part of the series Games like:
 1. Donald Kart - Currently Working On

@@ -272,7 +272,7 @@ export default function Game({
             console.log("city", assets.gltf.city.scene.children);
             const city = assets.gltf.city.scene;
             // city.position.add(new THREE.Vector3(0,77,10));
-            globalThis.city = city;
+            // globalThis.city = city;
 
             const sun = city.getObjectByName("Sun");
             if (sun && sun.type == "Mesh") {
@@ -281,7 +281,7 @@ export default function Game({
                     (meshSun.material as THREE.MeshStandardMaterial).emissive = (meshSun.material as THREE.MeshStandardMaterial).color;
                     (meshSun.material as THREE.MeshStandardMaterial).emissiveIntensity = 10000;
 
-                    globalThis.sun = meshSun;
+                    // globalThis.sun = meshSun;
                 }
             }
             frameLoopTask(() => {

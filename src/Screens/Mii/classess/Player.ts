@@ -14,8 +14,9 @@ export class Player {
     public animations: { idle: THREE.AnimationAction; walking: THREE.AnimationAction; running: THREE.AnimationAction };
     public animweights: { idle: number; walking: number; running: number };
     public running: boolean;
-    public runningLerped:number;
+    public runningLerped: number;
     public lastLook: number;
+    public down: boolean;
     constructor(c: Character) {
         this.char = c;
         this.keysAxisRaw = { horizontal: 0, vertical: 0 };
@@ -25,8 +26,8 @@ export class Player {
         this.lastLook = 0;
         this.runningLerped = 0;
         this.spherical = new THREE.Spherical(6, Math.PI, 0);
-
-        
+        this.down = false;
+        this.char.text(false);
         this.running = false;
         this.animations = {
             idle: this.char.mixer.clipAction(Player.animationsPack.idle),
@@ -47,15 +48,31 @@ export class Player {
         this.animations.running.play();
         this.animations.running.setEffectiveTimeScale(1.2);
     }
-    public mouseMovement(movementX:number){
-        this.yMovement = -movementX * 2 / 10;
+    public mouseMovement(movementX: number) {
+        if (this.down) this.yMovement = (-movementX * 2) / 10;
     }
     public update(deltaTime: number, camera: THREE.PerspectiveCamera, keysDown: Set<string>) {
         function _keys(this: Player) {
-            this.running = keysDown.has("ShiftLeft");
+            this.running = this.down ? keysDown.has("ShiftLeft") : false;
             this.runningLerped = lerp(this.runningLerped, this.running ? 1 : 0, deltaTime * 5);
-            this.keysAxisRaw.vertical = keysDown.has("KeyW") && keysDown.has("KeyS") ? 0 : keysDown.has("KeyW") ? 1 : keysDown.has("KeyS") ? -1 : 0;
-            this.keysAxisRaw.horizontal = keysDown.has("KeyD") && keysDown.has("KeyA") ? 0 : keysDown.has("KeyD") ? 1 : keysDown.has("KeyA") ? -1 : 0;
+            this.keysAxisRaw.vertical = this.down
+                ? keysDown.has("KeyW") && keysDown.has("KeyS")
+                    ? 0
+                    : keysDown.has("KeyW")
+                    ? 1
+                    : keysDown.has("KeyS")
+                    ? -1
+                    : 0
+                : 0;
+            this.keysAxisRaw.horizontal = this.down
+                ? keysDown.has("KeyD") && keysDown.has("KeyA")
+                    ? 0
+                    : keysDown.has("KeyD")
+                    ? 1
+                    : keysDown.has("KeyA")
+                    ? -1
+                    : 0
+                : 0;
             for (const key in Object.keys(this.keysAxis)) {
                 const k = Object.keys(this.keysAxis)[key] as "horizontal" | "vertical";
                 this.keysAxis[k] = lerp(this.keysAxis[k], this.keysAxisRaw[k], 0.1);
@@ -69,19 +86,18 @@ export class Player {
             return (radians + maxDegree) % maxDegree;
         }
 
+        const forwardQuaternion = new CANNON.Quaternion();
+        forwardQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), this.yRotation * THREE.MathUtils.DEG2RAD);
+
+        const forward = Vec3ToVector3(forwardQuaternion.clone().vmult(new CANNON.Vec3(0, 0, 1))).multiplyScalar(this.keysAxis.vertical);
+        const right = Vec3ToVector3(forwardQuaternion.clone().vmult(new CANNON.Vec3(1, 0, 0))).multiplyScalar(-this.keysAxis.horizontal);
+
         function _movement(this: Player) {
-            const forwardQuaternion = new CANNON.Quaternion();
-            forwardQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), this.yRotation * THREE.MathUtils.DEG2RAD);
-
-            const forward = Vec3ToVector3(forwardQuaternion.clone().vmult(new CANNON.Vec3(0, 0, 1)));
-            const right = Vec3ToVector3(forwardQuaternion.clone().vmult(new CANNON.Vec3(1, 0, 0)));
-
             this.char.mesh.position.add(
                 forward
                     .clone()
-                    .multiplyScalar(this.keysAxis.vertical)
-                    .add(right.clone().multiplyScalar(-this.keysAxis.horizontal))
-                    .multiplyScalar(deltaTime * 3 * (Math.max(5 * this.runningLerped,1)))
+                    .add(right.clone())
+                    .multiplyScalar(deltaTime * 3 * Math.max(5 * this.runningLerped, 1))
             );
 
             if (Math.max(Math.min(Math.abs(this.keysAxisRaw.horizontal) + Math.abs(this.keysAxisRaw.vertical), 1), 0) === 1) {
@@ -93,9 +109,9 @@ export class Player {
         }
         function _camera(this: Player) {
             this.spherical.phi = (Math.PI * 0.6) / 2;
-            this.spherical.theta = this.yRotation * THREE.MathUtils.DEG2RAD+ Math.PI;
+            this.spherical.theta = this.yRotation * THREE.MathUtils.DEG2RAD + Math.PI;
 
-            camera.position.setFromSpherical(this.spherical).add(this.char.mesh.position);
+            camera.position.setFromSpherical(this.spherical).add(this.char.mesh.position).add(forward.clone().add(right.clone()).multiplyScalar(-0.5));
             camera.lookAt(this.char.mesh.position);
             camera.position.add(new THREE.Vector3(0, 1, 0));
         }
@@ -103,9 +119,9 @@ export class Player {
             let A = Math.max(Math.min(Math.abs(this.keysAxisRaw.horizontal) + Math.abs(this.keysAxisRaw.vertical), 1), 0);
             let B = this.running ? A : 0;
 
-            this.animweights.running = lerp(this.animweights.running, B*3, deltaTime * 5);
+            this.animweights.running = lerp(this.animweights.running, B * 3, deltaTime * 5);
             this.animweights.walking = lerp(this.animweights.walking, Math.abs(B - A) * 3, deltaTime * 5);
-            this.animweights.idle = lerp(this.animweights.idle, (1 - A)*3, deltaTime * 5);
+            this.animweights.idle = lerp(this.animweights.idle, (1 - A) * 3, deltaTime * 5);
 
             this.animations.running.setEffectiveWeight(this.animweights.running);
             this.animations.idle.setEffectiveWeight(this.animweights.idle);
@@ -117,12 +133,13 @@ export class Player {
         _animation.bind(this)();
 
         this.yRotation += this.yMovement;
-        this.yRotation = (this.yRotation + 360) % (360);
+        this.yRotation = (this.yRotation + 360) % 360;
         this.yMovement = 0;
     }
-    public destroy(){
+    public destroy() {
         this.animations.walking.stop();
         this.animations.idle.stop();
         this.animations.running.stop();
+        this.char.text(true);
     }
 }

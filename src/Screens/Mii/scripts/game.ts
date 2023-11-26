@@ -7,6 +7,7 @@ import { findBoneByName } from "../assets/functions";
 import { Random } from "#Donald/Screens/Kart/assets/functions";
 import { Player } from "../classess/Player";
 import { CameraControl } from "../classess/cameraController";
+import { Character } from "../classess/Character";
 
 export type GameReturns = {};
 
@@ -23,9 +24,11 @@ const GameStates = {
     Flying: 0,
     Editor: 1,
     Play: 2,
+    Editing: 3,
 };
 
 export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTIONS: React.Dispatch<React.SetStateAction<Actions>> }): GameReturns {
+    Character.font =  assets.fonts.roboto;
     // @ts-ignore
     globalThis.glassess = new THREE.Vector3();
     const container = document.querySelector("div.gameContainer") as HTMLDivElement;
@@ -48,11 +51,85 @@ export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTI
         walking: assets.fbx.pwalk.animations[0],
         running: assets.fbx.prun.animations[0],
     };
+    Character.camera = camera;
 
     let currentName = "";
     let currentState = GameStates.Flying;
     let currentPlayer: Player | null = null;
     const cameraController = new CameraControl(camera);
+
+    const globalActions = {
+        flying: {
+            add: () => {
+                const name = requestName();
+                if (name === null) return;
+                characters.add(name);
+            },
+            deleteAll: {
+                action: () => {
+                    characters.removeAll();
+                },
+                available: () => characters.count > 0,
+            },
+        } as Actions,
+        editor: (c: Character) => {
+            return {
+                edit: () => {
+                    currentState = GameStates.Editing;
+                    SetACTIONS(globalActions.editing(c));
+                },
+                clone: async () => {
+                    const name = requestName();
+                    if (name === null) return;
+                    const xchar = await characters.clone(c, name);
+                    currentName = name;
+
+                    currentState = GameStates.Editor;
+                    document.exitPointerLock();
+                    SetACTIONS(globalActions.editor(xchar));
+                    // currentState = GameStates.Flying;
+                    // SetACTIONS(globalActions.flying);
+                },
+                play: () => {
+                    currentState = GameStates.Play;
+                    renderer.domElement.requestPointerLock();
+
+                    currentPlayer = new Player(c);
+                    SetACTIONS({
+                        back: () => {
+                            currentState = GameStates.Flying;
+                            SetACTIONS(globalActions.flying);
+                            currentName = "";
+                            _documentEvents();
+                            currentPlayer?.destroy();
+                            currentPlayer = null;
+                        },
+                    });
+                    // Build The Play Scene!
+                },
+                remove: () => {
+                    characters.remove(c.name);
+                    SetACTIONS(globalActions.flying);
+                    currentState = GameStates.Flying;
+                },
+                back: () => {
+                    currentName = "";
+                    currentState = GameStates.Flying;
+                    SetACTIONS(globalActions.flying);
+                },
+            } as Actions;
+        },
+        editing: (c: Character) => {
+            return {
+                back: () => {
+                    currentName = c.name;
+                    currentState = GameStates.Editor;
+                    SetACTIONS(globalActions.editor(c));
+                },
+            } as Actions;
+        },
+    };
+
     const characters = new CharactersList(assets.fbx.player, {
         add: (c) => {
             c.mesh.castShadow = true;
@@ -68,37 +145,7 @@ export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTI
                 currentName = c.name;
                 currentState = GameStates.Editor;
                 document.exitPointerLock();
-                SetACTIONS({
-                    edit: () => {},
-                    clone: () => {},
-                    play: () => {
-                        currentState = GameStates.Play;
-                        renderer.domElement.requestPointerLock();
-
-                        currentPlayer = new Player(c);
-                        SetACTIONS({
-                            quit: () => {
-                                currentState = GameStates.Flying;
-                                SetACTIONS(globalActions.normal);
-                                currentName = "";
-                                _documentEvents();
-                                currentPlayer?.destroy();
-                                currentPlayer = null;
-                            },
-                        });
-                        // Build The Play Scene!
-                    },
-                    remove: () => {
-                        characters.remove(c.name);
-                        SetACTIONS(globalActions.normal);
-                        currentState = GameStates.Flying;
-                    },
-                    back: () => {
-                        currentName = "";
-                        currentState = GameStates.Flying;
-                        SetACTIONS(globalActions.normal);
-                    },
-                });
+                SetACTIONS(globalActions.editor(c));
             };
             scene.add(c.mesh);
         },
@@ -112,34 +159,16 @@ export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTI
         animation: assets.fbx.idle.animations[0],
     });
 
-    function requestName():string{
+    function requestName(): string | null {
         const name = prompt("Enter Character Name:");
-        if (name === null){
-            alert("Empty String was Detected");
-            return requestName();
-        }
-        if (characters.has(name)){
+        if (name !== null && characters.has(name)) {
             alert("Name Already Exists");
             return requestName();
         }
         return name;
     }
 
-    const globalActions = {
-        normal: {
-            add: () => {
-                const name = requestName();
-                characters.add(name);
-            },
-            deleteAll: {
-                action: () => {
-                    characters.removeAll();
-                },
-                available: () => characters.count > 0,
-            },
-        },
-    } as { [key: string]: Actions };
-    SetACTIONS(globalActions.normal);
+    SetACTIONS(globalActions.flying);
 
     const keyHandlers = {
         pressing: {},
@@ -148,7 +177,7 @@ export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTI
             Backspace: () => {
                 currentName = "";
                 currentState = GameStates.Flying;
-                SetACTIONS(globalActions.normal);
+                SetACTIONS(globalActions.flying);
             },
         },
     };
@@ -225,11 +254,22 @@ export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTI
             console.log(document.activeElement?.tagName);
             const l = PointerMesh.meshes.filter((v) => v.hover);
             if (l.length === 0) {
-                if (currentState === GameStates.Play) renderer.domElement.requestPointerLock();
+                if (currentState === GameStates.Play) {
+                    currentPlayer ? (currentPlayer.down = true) : 0;
+
+                    renderer.domElement.requestPointerLock();
+                }
             } else {
                 l.forEach((element) => {
                     element.onClick();
                 });
+            }
+        };
+
+        document.onpointerlockchange = () => {
+            if (document.pointerLockElement === null) {
+                if (currentState === GameStates.Play) currentPlayer ? (currentPlayer.down = false) : 0;
+                if (currentState === GameStates.Flying) cameraController.down = false;
             }
         };
 
@@ -259,8 +299,8 @@ export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTI
         );
         document.addEventListener("keydown", (e) => {
             if (e.code === "KeyN") {
-                const name = requestName();
-                characters.add(name);
+                // @ts-ignore
+                globalActions.normal.add();
             }
         });
     }
@@ -275,9 +315,8 @@ export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTI
                     l.shadow.mapSize.width = 1024;
                     l.shadow.mapSize.height = 1024;
 
-                    l.shadow.camera.near = 5;
-                    l.shadow.camera.far = 10;
-                    l.castShadow = true;
+                    l.shadow.camera.near = 0.1;
+                    l.shadow.camera.far = 1000;
                 } else if (x.type === "point") {
                     l = new THREE.PointLight(x.color, x.intensity);
                     l.castShadow = true;
@@ -324,22 +363,24 @@ export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTI
             if (currentState === GameStates.Play) {
                 currentPlayer?.update(deltaTime, camera, keysDown);
             } else {
-                cameraController.update(
-                    deltaTime,
-                    currentName.length > 0 && characters.has(currentName) ? characters.getForced(currentName).position.clone() : undefined,
-                    keysDown
-                );
+                const vec3 = currentName.length > 0 && characters.has(currentName) ? characters.getForced(currentName).position.clone() : undefined;
+                if (currentState === GameStates.Editing && vec3) {
+                    vec3.add(new THREE.Vector3(-2.5, 0, 0));
+                }
+                cameraController.update(deltaTime, vec3, keysDown);
             }
         }
         function _updateCharacters() {
             for (const xchars of Array.from(characters.list.entries())) {
                 const bone = findBoneByName(xchars[1].mesh, "mixamorigHead");
                 xchars[1].mixer.update(deltaTime * 1);
-                xchars[1].update();
+                for (const f of xchars[1].update){
+                    f();
+                }
 
-                if (xchars[1].pointer.hover) {
+                if ( document.pointerLockElement === null && (xchars[1].pointer.hover || currentName === xchars[1].name) && currentState !== GameStates.Play) {
                     if (!bone) continue;
-                    // bone.lookAt(new THREE.Vector3().unproject(camera));
+                    bone.lookAt(new THREE.Vector3().unproject(camera));
                 }
             }
         }
@@ -381,7 +422,7 @@ export default function ({ assets, SetACTIONS }: { assets: loadedAssets; SetACTI
         });
     }, 3).then(() => {
         requestAnimationFrame(() => {
-            SetACTIONS(globalActions.normal);
+            SetACTIONS(globalActions.flying);
         });
     });
 
